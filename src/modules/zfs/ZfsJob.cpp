@@ -184,6 +184,13 @@ ZfsJob::exec()
 
     const Calamares::System* system = Calamares::System::instance();
 
+    const auto bootloader = gs->value( "bootloader@packagechooser" ).toString();
+
+    if (bootloader == "grub")
+    {
+        m_poolOptions.append( " -o compatibility=grub2" );
+    }
+
     QVariantList poolNames;
 
     // Check to ensure the list of zfs info from the partition module is available and convert it to a list
@@ -247,6 +254,9 @@ ZfsJob::exec()
         {
             cWarning() << "Failed to create /etc/hostid";
         }
+
+        // Put information about native ZFS encryption into GS
+        gs->insert( "zfsEncrypted", encrypt );
 
         // Create the zpool
         ZfsResult zfsResult;
