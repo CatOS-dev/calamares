@@ -17,6 +17,7 @@
 #include "core/BootLoaderModel.h"
 #include "core/DeviceModel.h"
 #include "core/PartitionCoreModule.h"
+#include "core/PartitionInfo.h"
 #include "gui/ChoicePage.h"
 #include "gui/PartitionBarsView.h"
 #include "gui/PartitionLabelsView.h"
@@ -480,7 +481,7 @@ listItem( QString s )
 }
 
 static bool
-shouldWarnForGPTOnBIOS( const PartitionCoreModule* core )
+shouldWarnForBiosGrub( const PartitionCoreModule* core )
 {
     if ( PartUtils::isEfiSystem() )
     {
@@ -495,19 +496,16 @@ shouldWarnForGPTOnBIOS( const PartitionCoreModule* core )
     {
         auto* table = device->partitionTable();
         cDebug() << "Found device for bootloader" << device->deviceNode();
-        if ( table && table->type() == PartitionTable::TableType::gpt )
+        if ( table && KPMHelpers::isMSDOSPartition( table->type() ) )
         {
-            // So this is a BIOS system, and the bootloader will be installed on a GPT system
-            for ( const auto& partition : std::as_const( table->children() ) )
+            Partition* boot_p = core->findPartitionByMountPoint( "/boot" );
+            if ( boot_p )
             {
-                using Calamares::Units::operator""_MiB;
-                if ( ( partition->activeFlags() & KPM_PARTITION_FLAG( BiosGrub ) )
-                     && ( partition->fileSystem().type() == FileSystem::Unformatted )
-                     && ( partition->capacity() >= 8_MiB ) )
+                if ( ( PartitionInfo::flags(boot_p) ) & KPM_PARTITION_FLAG( BiosGrub ) )
                 {
-                    cDebug() << Logger::SubEntry << "Partition" << partition->devicePath() << partition->partitionPath()
+                    cDebug() << Logger::SubEntry << "Partition" << boot_p->devicePath() << boot_p->partitionPath()
                              << "is a suitable" << biosFlagName << "partition";
-                    return false;
+                    return true;
                 }
             }
         }
@@ -517,7 +515,7 @@ shouldWarnForGPTOnBIOS( const PartitionCoreModule* core )
     {
         cDebug() << "Found no device for" << core->bootLoaderInstallPath();
     }
-    return true;
+    return false;
 }
 
 static bool
@@ -863,26 +861,17 @@ PartitionViewStep::onLeave()
             }
 
             if ( bootloader == "limine" && shouldWarnForBiosGrub( m_core ) )
-
-            if ( shouldWarnForGPTOnBIOS( m_core ) )
             {
                 const QString biosFlagName = PartitionTable::flagName( KPM_PARTITION_FLAG( BiosGrub ) );
-                QString message = tr( "Option to use GPT on BIOS" );
-                QString description = tr( "A GPT partition table is the best option for all "
-                                          "systems. This installer supports such a setup for "
-                                          "BIOS systems too."
-                                          "<br/><br/>"
-                                          "To configure a GPT partition table on BIOS, "
-                                          "(if not done so already) go back "
-                                          "and set the partition table to GPT, next create a 8 MB "
-                                          "unformatted partition with the "
-                                          "<strong>%2</strong> flag enabled.<br/><br/>"
-                                          "An unformatted 8 MB partition is necessary "
-                                          "to start %1 on a BIOS system with GPT." )
-                                          .arg( branding->shortProductName(), biosFlagName );
+                QString message = tr( "Detected bios-grub flag on boot partition" );
+                QString description = tr( "You specified %1 flag on our boot partition, "
+                                         "which when used on MBR systems together with Limine bootloader, "
+                                         "results in a broken installation.<br/><br/>"
+                                         "Please go back and remove the %1 flag.")
+                                          .arg( biosFlagName );
 
                 QMessageBox mb(
-                    QMessageBox::Information, message, description, QMessageBox::Ok, m_manualPartitionPage );
+                    QMessageBox::Critical, message, description, QMessageBox::Ok, m_manualPartitionPage );
                 Calamares::fixButtonLabels( &mb );
                 mb.exec();
             }
