@@ -300,6 +300,8 @@ ChoicePage::setupChoices()
         m_replaceButton->addOptionsComboBox( m_replaceFsTypesChoiceComboBox );
     }
 
+    connect( m_config, &Config::configurationChanged, this, &ChoicePage::onConfigurationChanged );
+
     m_itemsLayout->addWidget( m_alongsideButton );
     m_itemsLayout->addWidget( m_replaceButton );
     m_itemsLayout->addWidget( m_eraseButton );
@@ -445,12 +447,9 @@ ChoicePage::continueApplyDeviceChoice()
     setupActions();
 
     cDebug() << "Previous device" << m_lastSelectedDeviceIndex << "new device" << m_drivesCombo->currentIndex();
-    if ( m_lastSelectedDeviceIndex != m_drivesCombo->currentIndex() )
-    {
-        m_lastSelectedDeviceIndex = m_drivesCombo->currentIndex();
-        m_config->setInstallChoice( m_config->initialInstallChoice() );
-        checkInstallChoiceRadioButton( m_config->installChoice() );
-    }
+    m_lastSelectedDeviceIndex = m_drivesCombo->currentIndex();
+    m_config->setInstallChoice( m_config->initialInstallChoice() );
+    checkInstallChoiceRadioButton( m_config->installChoice() );
 
     Q_EMIT actionChosen();
     Q_EMIT deviceChosen();
@@ -686,6 +685,16 @@ ChoicePage::onHomeCheckBoxStateChanged()
     {
         doReplaceSelectedPartition( m_beforePartitionBarsView->selectionModel()->currentIndex() );
     }
+}
+
+void
+ChoicePage::onConfigurationChanged()
+{
+    m_eraseFsTypesChoiceComboBox->clear();
+    m_eraseFsTypesChoiceComboBox->addItems(m_config->eraseFsTypes());
+    m_replaceFsTypesChoiceComboBox->clear();
+    m_replaceFsTypesChoiceComboBox->addItems(m_config->eraseFsTypes());
+    ChoicePage::applyDeviceChoice();
 }
 
 void

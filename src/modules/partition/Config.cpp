@@ -411,8 +411,11 @@ Config::fillConfigurationFSTypes( const QVariantMap& configurationMap )
     Q_ASSERT( m_eraseFsTypes.contains( fsRealName ) );
     m_eraseFsTypeChoice = fsRealName;
     m_replaceFileSystemChoice = fsRealName;
-    Q_EMIT eraseModeFilesystemChanged( m_eraseFsTypeChoice );
-    Q_EMIT replaceModeFilesystemChanged( m_replaceFileSystemChoice );
+    
+    if (m_configurationMap.isEmpty()) {
+        Q_EMIT eraseModeFilesystemChanged( m_eraseFsTypeChoice );
+        Q_EMIT replaceModeFilesystemChanged( m_replaceFileSystemChoice );
+    }
 }
 
 void
@@ -460,10 +463,16 @@ Config::setConfigurationMap( const QVariantMap& configurationMap )
     gs->insert( "armInstall", Calamares::getBool( configurationMap, "armInstall", false ) );
     fillGSConfigurationEFI( gs, configurationMap );
     fillConfigurationFSTypes( configurationMap );
+
+    if (m_configurationMap.isEmpty()) {
+        m_configurationMap = configurationMap;
+    } else {
+        Q_EMIT configurationChanged();
+    }
 }
 
 void
-Config::fillGSSecondaryConfiguration() const
+Config::fillGSSecondaryConfiguration()
 {
     // If there's no setting (e.g. from the welcome page) for required storage
     // then use ours, if it was set.
@@ -471,5 +480,33 @@ Config::fillGSSecondaryConfiguration() const
     if ( m_requiredStorageGiB >= 0.0 && gs && !gs->contains( "requiredStorageGiB" ) )
     {
         gs->insert( "requiredStorageGiB", m_requiredStorageGiB );
+    }
+
+     // Use bootloader-specific values if specified
+    const auto bootloader = gs->value( "bootloader@packagechooser" ).toString();
+    auto bootloaderOverrides = Calamares::getList( m_configurationMap, "bootloaderOverrides" );
+
+    if (m_bootloader != bootloader) {
+        for ( const auto& bootloaderEntry : std::as_const( bootloaderOverrides ) )
+        {
+            const QVariantMap& bootloaderConfiguration = bootloaderEntry.toMap();
+
+            if (bootloaderConfiguration[ "name" ].toString().isEmpty()) {
+                continue;
+            }
+
+            if ( bootloaderConfiguration["name"].toString() == m_bootloader ) {
+                setConfigurationMap( m_configurationMap );
+                break;
+            }
+
+            if (bootloaderConfiguration["name"].toString() == bootloader )
+            {
+                setConfigurationMap( bootloaderConfiguration );
+                break;
+            }
+        }
+
+        m_bootloader = bootloader;
     }
 }

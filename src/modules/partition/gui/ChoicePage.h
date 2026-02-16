@@ -107,6 +107,8 @@ private slots:
 
     void retranslate();
 
+    void onConfigurationChanged();
+
 private:
     bool calculateNextEnabled() const;
     void updateNextEnabled();

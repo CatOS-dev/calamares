@@ -20,6 +20,20 @@ properties:
             mountPoint: { type: string }
         additionalProperties: false
 
+    bootloaderOverrides:
+        type: array
+        items:
+          type: object
+          properties:
+            name: { type: string }
+            allowZfsEncryption: { type: boolean }
+            defaultFileSystemType: { type: string }
+            availableFileSystemTypes: { type: array, items: { type: string } }
+            efiSystemPartition: { type: string }
+            efiSystemPartitionSize: { type: string }
+            luksGeneration: { type: string, enum: [luks1, luks2] }
+          additionalProperties: false
+
     lvm:
         type: object
         properties:

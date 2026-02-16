@@ -17,6 +17,7 @@
 
 #include <QObject>
 #include <QSet>
+#include <qcontainerfwd.h>
 
 class Config : public QObject
 {
@@ -91,7 +92,7 @@ public:
      * Applicable GS keys:
      *  - requiredStorageGiB
      */
-    void fillGSSecondaryConfiguration() const;
+    void fillGSSecondaryConfiguration();
 
     /** @brief What kind of installation (partitioning) is requested **initially**?
      *
@@ -201,6 +202,7 @@ Q_SIGNALS:
     void swapChoiceChanged( SwapChoice );
     void eraseModeFilesystemChanged( const QString& );
     void replaceModeFilesystemChanged( const QString& );
+    void configurationChanged();
 
 private:
     /** @brief Handle FS-type configuration, for erase and default */
@@ -209,6 +211,7 @@ private:
     QString m_eraseFsTypeChoice;
     QString m_replaceFileSystemChoice;
     FileSystem::Type m_defaultFsType;
+    QString m_bootloader;
 
     SwapChoiceSet m_swapChoices;
     SwapChoice m_initialSwapChoice = NoSwap;
@@ -224,6 +227,7 @@ private:
     bool m_showNotEncryptedBootMessage = true;
     bool m_isLVMEnabled = true;
     QStringList m_essentialMounts;
+    QVariantMap m_configurationMap;
 };
 
 /** @brief Given a set of swap choices, return a sensible value from it.
