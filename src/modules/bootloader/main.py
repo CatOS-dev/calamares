@@ -15,6 +15,7 @@
 #   SPDX-FileCopyrightText: 2017 Gabriel Craciunescu <crazy@frugalware.org>
 #   SPDX-FileCopyrightText: 2017 Ben Green <Bezzy1999@hotmail.com>
 #   SPDX-FileCopyrightText: 2021 Neal Gompa <ngompa13@gmail.com>
+#   SPDX-FileCopyrightText: 2025 Vasiliy Stelmachenok <ventureo@cachyos.org>
 #   SPDX-License-Identifier: GPL-3.0-or-later
 #
 #   Calamares is Free Software: see the License-Identifier above.
@@ -28,7 +29,7 @@ import subprocess
 
 import libcalamares
 
-from libcalamares.utils import check_target_env_call, check_target_env_output
+from libcalamares.utils import target_env_call, check_target_env_call, check_target_env_output
 
 import gettext
 
@@ -60,6 +61,12 @@ def get_uuid():
             return partition["uuid"]
 
     return ""
+
+def get_machine_id(installation_root_path):
+    with open(os.path.join(installation_root_path, "etc", "machine-id"), 'r') as machineid_file:
+        machine_id = machineid_file.read().rstrip('\n')
+
+    return machine_id
 
 
 def get_kernel_line(kernel_type):
@@ -170,6 +177,7 @@ def get_kernel_params(uuid):
             cryptdevice_params.append(f"root=/dev/mapper/{partition['luksMapperName']}")
 
     # btrfs and zfs handling
+    is_zfs = False
     for partition in partitions:
         # If a btrfs root subvolume wasn't set, it means the root is directly on the partition
         # and this option isn't needed
@@ -182,6 +190,7 @@ def get_kernel_params(uuid):
         if is_zfs_root(partition):
             zfs_root_path = get_zfs_root()
             if zfs_root_path is not None:
+                is_zfs = True
                 kernel_params.append("root=ZFS=" + zfs_root_path)
             else:
                 # Something is really broken if we get to this point
@@ -190,8 +199,11 @@ def get_kernel_params(uuid):
 
     if cryptdevice_params:
         kernel_params.extend(cryptdevice_params)
+    elif len(uuid) != 0:
+        if not is_zfs:
+            kernel_params.append("root=UUID={!s}".format(uuid))
     else:
-        kernel_params.append("root=UUID={!s}".format(uuid))
+        libcalamares.utils.warning("UUID generated for root is empty. keep going")
 
     if swap_uuid:
         kernel_params.append("resume=UUID={!s}".format(swap_uuid))
@@ -227,8 +239,7 @@ def create_systemd_boot_conf(installation_root_path, efi_dir, uuid, kernel, kern
     libcalamares.utils.debug(f"Configuring kernel version {kernel_version}")
 
     # get the machine-id
-    with open(os.path.join(installation_root_path, "etc", "machine-id"), 'r') as machineid_file:
-        machine_id = machineid_file.read().rstrip('\n')
+    machine_id = get_machine_id(installation_root_path)
 
     # Ensure the directory exists
     machine_dir = os.path.join(installation_root_path + efi_dir, machine_id)
@@ -249,10 +260,13 @@ def create_loader(loader_path, installation_root_path):
     :param installation_root_path: The path to the root of the target installation
     """
 
-    # get the machine-id
-    with open(os.path.join(installation_root_path, "etc", "machine-id"), 'r') as machineid_file:
-        machine_id = machineid_file.read().rstrip('\n')
+    """
+     Obsolete since default was changed to @saved from machine-id
 
+     get the machine-id
+     with open(os.path.join(installation_root_path, "etc", "machine-id"), 'r') as machineid_file:
+        machine_id = machineid_file.read().rstrip('\n')
+    """
     try:
         loader_entries = libcalamares.job.configuration["loaderEntries"]
     except KeyError:
@@ -260,7 +274,7 @@ def create_loader(loader_path, installation_root_path):
         loader_entries = []
         pass
 
-    lines = [f"default {machine_id}*"]
+    lines = ["default @saved"]
 
     lines.extend(loader_entries)
 
@@ -542,9 +556,9 @@ def install_systemd_boot(efi_directory):
     loader_path = os.path.join(install_efi_directory,
                                "loader",
                                "loader.conf")
-    subprocess.call(["bootctl",
+    subprocess.check_call(["bootctl",
                      "--path={!s}".format(install_efi_directory),
-                     "install"])
+                     "install"], stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
 
     for (kernel, kernel_type, kernel_version) in get_kernels(installation_root_path):
         create_systemd_boot_conf(installation_root_path,
@@ -578,8 +592,6 @@ def get_grub_efi_parameters():
         return "arm64-efi", "grubaa64.efi", "bootaa64.efi"
     elif efi_bitness == "64" and cpu_type == "loongarch64":
         return "loongarch64-efi", "grubloongarch64.efi", "bootloongarch64.efi"
-    elif efi_bitness == "64" and cpu_type == "riscv64":
-        return "riscv64-efi", "grubriscv64.efi", "bootriscv64.efi"
     elif efi_bitness == "64":
         # If it's not ARM, must by AMD64
         return "x86_64-efi", "grubx64.efi", "bootx64.efi"
@@ -656,7 +668,7 @@ def run_grub_install(fw_type, partitions, efi_directory, install_hybrid_grub):
             boot_loader_install_path = boot_loader["installPath"]
             if boot_loader_install_path is None:
                 return
-            
+
         # boot_loader_install_path points to the physical disk to install GRUB
         # to. It should start with "/dev/", and be at least as long as the
         # string "/dev/sda".
@@ -674,6 +686,175 @@ def run_grub_install(fw_type, partitions, efi_directory, install_hybrid_grub):
                                    "--recheck",
                                    "--force",
                                    boot_loader_install_path])
+
+
+def show_broken_uefi_warning():
+    libcalamares.utils.show_warning(
+        "Bootloader installation partially broken",
+        "Due to a probably bug of your UEFI, system bootloader has been installed "
+        "but not listed in the entry list. You need to select drive on which you "
+        "install the system by yourself for default boot later."
+    )
+
+def get_partition_drive(partition):
+    devname = partition.replace("/dev/", "")
+
+    if not os.path.exists(f"/sys/class/block/{devname}/partition"):
+        return partition, 0
+
+    with open(f"/sys/class/block/{devname}/partition", "r") as f:
+        partition_number = f.readline().strip()
+
+    parent_blockdev = os.path.dirname(os.readlink(f"/sys/class/block/{devname}"))
+    drive = f"/dev/{os.path.basename(parent_blockdev)}"
+    return drive, partition_number
+
+def add_additional_entries_limine(efi_directory, installation_root_path, fw_type):
+    """
+    :param efi_directory: The path to the efi directory relative to the root
+    :param installation_root_path: The path to the root of the installation
+    :param fw_type: Type of system installation
+    """
+    osproberOutput = libcalamares.globalstorage.value("osproberLines")
+
+    if not osproberOutput:
+        return
+
+    partitions = libcalamares.globalstorage.value("partitions")
+    config_path = os.path.join(installation_root_path + efi_directory, "limine.conf")
+    with open(config_path, 'a') as config_file:
+        config_file.write("/+Other systems and bootloaders\n")
+        for line in osproberOutput:
+            (device, pretty_name, _, _) = line.split(":")
+
+            partition = device.split("@")
+
+            if fw_type == "efi" and len(partition) == 2:
+                (devname, efi_path) = partition
+                uuid = next(
+                    partition['partuuid'] for partition in partitions
+                    if partition['device'] == devname
+                )
+                config_file.write(f"//{pretty_name}\n")
+                config_file.write(f"\tprotocol: efi_chainload\n")
+                config_file.write(f"\timage_path: guid({uuid}):{efi_path}\n")
+            elif fw_type != "efi" and len(partition) == 1:
+                (devname,) = partition
+                drive, partition_number = get_partition_drive(devname)
+                drive = drive.replace("/dev/", "")
+                with open(f"/sys/block/{drive}/diskseq") as f:
+                    diskseq = f.readline().strip()
+
+                config_file.write(f"//{pretty_name}\n")
+                config_file.write(f"\tprotocol: bios_chainload\n")
+                if diskseq:
+                    config_file.write(f"\tdrive: {diskseq}\n")
+                config_file.write(f"\tpartition: {partition_number}\n")
+
+def update_limine_config(efi_directory, installation_root_path, fw_type):
+    """
+    :param efi_directory: The path to the efi directory relative to the root
+    :param installation_root_path: The path to the root of the installation
+    :param fw_type: A string which is "efi" for UEFI installs.  Any other value results in a BIOS install
+    """
+    config_path = os.path.join(installation_root_path + efi_directory, "limine.conf")
+    limine_entry_config_path = os.path.join(installation_root_path + "/etc/default", "limine")
+    uuid = get_uuid()
+    kernel_params = " ".join(get_kernel_params(uuid))
+
+    with open(config_path, 'w') as config_file:
+        config_file.write("timeout: 5\n")
+        config_file.write("default_entry: 2\n")
+        if fw_type == "efi":
+            config_file.write("remember_last_entry: yes\n")
+        config_file.write("\n")
+
+        # # Copy splash logo
+        # try:
+        #     splash = libcalamares.job.configuration["limineSplashLogo"]
+        #     install_efi_directory = installation_root_path + efi_directory
+        #     splash_path = installation_root_path + splash
+        #     if os.path.exists(splash_path):
+        #         shutil.copy2(splash_path, install_efi_directory)
+
+        #         # TODO (ventureo): This should be properly packaged when
+        #         # limine starts supporting drop-in configuration files.
+        #         config_file.write("# CatOS Limine theme\n")
+        #         config_file.write("term_palette: 1e1e2e;f38ba8;a6e3a1;f9e2af;89b4fa;f5c2e7;94e2d5;cdd6f4\n")
+        #         config_file.write("term_palette_bright: 585b70;f38ba8;a6e3a1;f9e2af;89b4fa;f5c2e7;94e2d5;cdd6f4\n")
+        #         config_file.write("term_background: ffffffff\n")
+        #         config_file.write("term_foreground: cdd6f4\n")
+        #         config_file.write("term_background_bright: ffffffff\n")
+        #         config_file.write("term_foreground_bright: cdd6f4\n")
+        #         config_file.write("interface_branding:\n")
+        #         config_file.write(f"wallpaper: boot():/{os.path.basename(splash_path)}\n\n")
+        #     else:
+        #         libcalamares.utils.warning('Splash logo specified in limineSplashLogo not found!')
+        # except KeyError:
+        #     libcalamares.utils.warning('limineSplashLogo not set. Skipping wallpaper in limine.conf')
+
+        machine_id = get_machine_id(installation_root_path)
+        config_file.write(f"comment: machine-id={machine_id}\n")
+        config_file.write(f"/+CatOS\n")
+
+    with open(limine_entry_config_path, 'w') as limine_entry_config:
+        limine_entry_config.write(f'ESP_PATH="{efi_directory}"\n')
+        limine_entry_config.write(f'KERNEL_CMDLINE[default]+="{kernel_params}"\n')
+        limine_entry_config.write(f'BOOT_ORDER="*, *lts, *fallback, Snapshots"\n')
+
+def install_limine(efi_directory, fw_type):
+    """
+    Installs limine as bootloader, either in pc or efi mode.
+
+    :param efi_directory:
+    :param fw_type:
+    """
+    # get the partition from global storage
+    partitions = libcalamares.globalstorage.value("partitions")
+    if not partitions:
+        libcalamares.utils.warning(_("Failed to install limine, no partitions defined in global storage"))
+        return
+
+    installation_root_path = libcalamares.globalstorage.value("rootMountPoint")
+    install_efi_directory = installation_root_path + efi_directory
+
+    if not os.path.isdir(install_efi_directory):
+        os.makedirs(install_efi_directory)
+
+    update_limine_config(efi_directory, installation_root_path, fw_type)
+    add_additional_entries_limine(efi_directory, installation_root_path, fw_type)
+
+    if fw_type == "efi":
+        libcalamares.utils.debug("Bootloader: limine (efi)")
+
+        exit_code = target_env_call(["limine-install"])
+
+        # Retry using fallback option if initial attempt failed
+        if exit_code != 0:
+            libcalamares.utils.warning("Failed to install limine bootloader, trying fallback option")
+
+            check_target_env_call(["limine-install", "--skip-uefi", "--fallback"])
+            show_broken_uefi_warning()
+
+            config_path = os.path.join(installation_root_path + "/etc/default", "limine")
+            with open(config_path, 'a') as config:
+                config.write("SKIP_UEFI=yes\n")
+                config.write("ENABLE_LIMINE_FALLBACK=yes\n")
+    else:
+        libcalamares.utils.debug("Bootloader: limine (bios)")
+
+        if libcalamares.globalstorage.value("bootLoader") is None:
+            return
+
+        boot_loader = libcalamares.globalstorage.value("bootLoader")
+
+        if boot_loader["installPath"] is None:
+            return
+
+        bios_sys_source = installation_root_path + "/usr/share/limine/limine-bios.sys"
+        shutil.copy2(bios_sys_source, install_efi_directory)
+        (drive, _) = get_partition_drive(boot_loader["installPath"])
+        check_target_env_call(["limine", "bios-install", drive])
 
 
 def install_grub(efi_directory, fw_type, install_hybrid_grub):
@@ -914,9 +1095,11 @@ def prepare_bootloader(fw_type, install_hybrid_grub):
         install_systemd_boot(efi_directory)
     elif efi_boot_loader == "sb-shim" and fw_type == "efi":
         install_secureboot(efi_directory)
-    elif efi_boot_loader == "refind" and fw_type == "efi":
+    elif (efi_boot_loader == "refind" or efi_boot_loader == "refind-ai") and fw_type == "efi":
         install_refind(efi_directory)
-    elif efi_boot_loader == "grub" or fw_type != "efi":
+    elif efi_boot_loader == "limine":
+        install_limine(efi_directory, fw_type)
+    elif efi_boot_loader == "grub":
         install_grub(efi_directory, fw_type, install_hybrid_grub)
     else:
         libcalamares.utils.debug("WARNING: the combination of "
