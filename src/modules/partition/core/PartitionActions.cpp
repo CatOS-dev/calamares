@@ -123,6 +123,27 @@ doAutopartition( PartitionCoreModule* core, Device* dev, Choices::AutoPartitionO
 
     core->createPartitionTable( dev, partType );
 
+    if ( !isEfi )
+    {
+        qint64 bios_part_sizeB = 1_MiB;
+        qint64 biosSectorCount = Calamares::bytesToSectors( bios_part_sizeB, dev->logicalSize() );
+        Q_ASSERT( biosSectorCount > 0 );
+
+        qint64 lastSector = firstFreeSector + biosSectorCount - 1;
+        Partition* biosPartition = KPMHelpers::createNewPartition( dev->partitionTable(),
+                                                                   *dev,
+                                                                   PartitionRole( PartitionRole::Primary ),
+                                                                   FileSystem::Unformatted,
+                                                                   QString(),
+                                                                   firstFreeSector,
+                                                                   lastSector,
+                                                                   KPM_PARTITION_FLAG( None ) );
+        core->createPartition( dev, biosPartition, KPM_PARTITION_FLAG( BiosGrub ) );
+        firstFreeSector = lastSector + 1;
+    }
+
+    const auto bootloader = gs->value( "bootloader@packagechooser" ).toString();
+
     if ( createHybridBootloaderLayout || isEfi )
     {
         qint64 uefisys_part_sizeB = PartUtils::efiFilesystemRecommendedSize();

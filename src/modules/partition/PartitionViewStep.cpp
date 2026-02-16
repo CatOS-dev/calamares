@@ -521,6 +521,47 @@ shouldWarnForGPTOnBIOS( const PartitionCoreModule* core )
 }
 
 static bool
+shouldWarnForGPTOnBIOS( const PartitionCoreModule* core )
+{
+    if ( PartUtils::isEfiSystem() )
+    {
+        return false;
+    }
+
+    const QString biosFlagName = PartitionTable::flagName( KPM_PARTITION_FLAG( BiosGrub ) );
+
+    auto [ r, device ] = core->bootLoaderModel()->findBootLoader( core->bootLoaderInstallPath() );
+    Q_UNUSED( r );
+    if ( device )
+    {
+        auto* table = device->partitionTable();
+        cDebug() << "Found device for bootloader" << device->deviceNode();
+        if ( table && table->type() == PartitionTable::TableType::gpt )
+        {
+            // So this is a BIOS system, and the bootloader will be installed on a GPT system
+            for ( const auto& partition : std::as_const( table->children() ) )
+            {
+                using Calamares::Units::operator""_MiB;
+                if ( ( partition->activeFlags() & KPM_PARTITION_FLAG( BiosGrub ) )
+                     && ( partition->fileSystem().type() == FileSystem::Unformatted )
+                     && ( partition->capacity() >= 1_MiB ) )
+                {
+                    cDebug() << Logger::SubEntry << "Partition" << partition->devicePath() << partition->partitionPath()
+                             << "is a suitable" << biosFlagName << "partition";
+                    return false;
+                }
+            }
+        }
+        cDebug() << Logger::SubEntry << "No suitable partition for" << biosFlagName << "found";
+    }
+    else
+    {
+        cDebug() << "Found no device for" << core->bootLoaderInstallPath();
+    }
+    return true;
+}
+
+static bool
 shouldWarnForNotEncryptedBoot( const Config* config, const PartitionCoreModule* core )
 {
     if ( config->showNotEncryptedBootMessage() )
@@ -794,6 +835,34 @@ PartitionViewStep::onLeave()
         {
 
             cDebug() << "device: BIOS";
+
+            Calamares::GlobalStorage* gs = Calamares::JobQueue::instance()->globalStorage();
+            const auto bootloader = gs->value( "bootloader@packagechooser" ).toString();
+
+            if ( bootloader == "grub" && shouldWarnForGPTOnBIOS( m_core ) )
+            {
+                const QString biosFlagName = PartitionTable::flagName( KPM_PARTITION_FLAG( BiosGrub ) );
+                QString message = tr( "Option to use GPT on BIOS" );
+                QString description = tr( "A GPT partition table is the best option for all "
+                                          "systems. This installer supports such a setup for "
+                                          "BIOS systems too."
+                                          "<br/><br/>"
+                                          "To configure a GPT partition table on BIOS, "
+                                          "(if not done so already) go back "
+                                          "and set the partition table to GPT, next create a 8 MB "
+                                          "unformatted partition with the "
+                                          "<strong>%2</strong> flag enabled.<br/><br/>"
+                                          "An unformatted 8 MB partition is necessary "
+                                          "to start %1 on a BIOS system with GPT." )
+                                          .arg( branding->shortProductName(), biosFlagName );
+
+                QMessageBox mb(
+                    QMessageBox::Information, message, description, QMessageBox::Ok, m_manualPartitionPage );
+                Calamares::fixButtonLabels( &mb );
+                mb.exec();
+            }
+
+            if ( bootloader == "limine" && shouldWarnForBiosGrub( m_core ) )
 
             if ( shouldWarnForGPTOnBIOS( m_core ) )
             {
