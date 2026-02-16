@@ -411,7 +411,7 @@ Config::fillConfigurationFSTypes( const QVariantMap& configurationMap )
     Q_ASSERT( m_eraseFsTypes.contains( fsRealName ) );
     m_eraseFsTypeChoice = fsRealName;
     m_replaceFileSystemChoice = fsRealName;
-    
+
     if (m_configurationMap.isEmpty()) {
         Q_EMIT eraseModeFilesystemChanged( m_eraseFsTypeChoice );
         Q_EMIT replaceModeFilesystemChanged( m_replaceFileSystemChoice );
@@ -482,7 +482,7 @@ Config::fillGSSecondaryConfiguration()
         gs->insert( "requiredStorageGiB", m_requiredStorageGiB );
     }
 
-     // Use bootloader-specific values if specified
+    // Use bootloader-specific values if specified
     const auto bootloader = gs->value( "packagechooser_bootloader" ).toString();
     auto bootloaderOverrides = Calamares::getList( m_configurationMap, "bootloaderOverrides" );
 

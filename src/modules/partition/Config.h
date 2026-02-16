@@ -210,8 +210,8 @@ private:
     EraseFsTypesSet m_eraseFsTypes;
     QString m_eraseFsTypeChoice;
     QString m_replaceFileSystemChoice;
-    FileSystem::Type m_defaultFsType;
     QString m_bootloader;
+    FileSystem::Type m_defaultFsType;
 
     SwapChoiceSet m_swapChoices;
     SwapChoice m_initialSwapChoice = NoSwap;
