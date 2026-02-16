@@ -483,7 +483,7 @@ Config::fillGSSecondaryConfiguration()
     }
 
      // Use bootloader-specific values if specified
-    const auto bootloader = gs->value( "bootloader@packagechooser" ).toString();
+    const auto bootloader = gs->value( "packagechooser_bootloader" ).toString();
     auto bootloaderOverrides = Calamares::getList( m_configurationMap, "bootloaderOverrides" );
 
     if (m_bootloader != bootloader) {

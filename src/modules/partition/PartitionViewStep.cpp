@@ -835,7 +835,7 @@ PartitionViewStep::onLeave()
             cDebug() << "device: BIOS";
 
             Calamares::GlobalStorage* gs = Calamares::JobQueue::instance()->globalStorage();
-            const auto bootloader = gs->value( "bootloader@packagechooser" ).toString();
+            const auto bootloader = gs->value( "packagechooser_bootloader" ).toString();
 
             if ( bootloader == "grub" && shouldWarnForGPTOnBIOS( m_core ) )
             {

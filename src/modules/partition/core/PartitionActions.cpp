@@ -142,7 +142,7 @@ doAutopartition( PartitionCoreModule* core, Device* dev, Choices::AutoPartitionO
         firstFreeSector = lastSector + 1;
     }
 
-    const auto bootloader = gs->value( "bootloader@packagechooser" ).toString();
+    const auto bootloader = gs->value( "packagechooser_bootloader" ).toString();
 
     if ( createHybridBootloaderLayout || isEfi )
     {

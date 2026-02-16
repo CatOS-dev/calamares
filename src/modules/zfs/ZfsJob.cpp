@@ -184,7 +184,7 @@ ZfsJob::exec()
 
     const Calamares::System* system = Calamares::System::instance();
 
-    const auto bootloader = gs->value( "bootloader@packagechooser" ).toString();
+    const auto bootloader = gs->value( "packagechooser_bootloader" ).toString();
 
     if (bootloader == "grub")
     {
