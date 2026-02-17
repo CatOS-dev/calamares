@@ -762,6 +762,12 @@ def update_limine_config(efi_directory, installation_root_path, fw_type):
     uuid = get_uuid()
     kernel_params = " ".join(get_kernel_params(uuid))
 
+    kernel_cmdline_path = os.path.join(installation_root_path, "etc", "kernel")
+    os.makedirs(kernel_cmdline_path, exist_ok=True)
+    with open(os.path.join(kernel_cmdline_path, "cmdline"), "w") as cmdline_file:
+        cmdline_file.write(kernel_params)
+
+
     with open(config_path, 'w') as config_file:
         config_file.write("timeout: 5\n")
         config_file.write("default_entry: 2\n")
