@@ -37,6 +37,8 @@
 
 #include <kpmcore/core/device.h>
 #include <kpmcore/core/partition.h>
+#include <kpmcore/fs/luks.h>
+#include <kpmcore/fs/luks2.h>
 
 #include <QFormLayout>
 #include <QMessageBox>
@@ -270,6 +272,9 @@ PartitionViewStep::createSummaryWidget() const
     const int MARGIN = Calamares::defaultFontHeight() / 2;
     formLayout->setContentsMargins( MARGIN, 0, MARGIN, MARGIN );
     mainLayout->addLayout( formLayout );
+    formLayout->addRow(
+        tr( "System snapshots:", "@label" ),
+        new QLabel( m_config->snapshotsEnabled() ? tr( "Enabled", "@label" ) : tr( "Disabled", "@label" ) ) );
 
 #if defined( DEBUG_PARTITION_UNSAFE ) || defined( DEBUG_PARTITION_BAIL_OUT ) || defined( DEBUG_PARTITION_SKIP )
     auto specialRow = [ = ]( Calamares::ImageType t, const QString& s )
@@ -407,6 +412,26 @@ PartitionViewStep::back()
     }
 }
 
+static FileSystem::Type
+rootFilesystemType( Partition* partition )
+{
+    if ( !partition )
+    {
+        return FileSystem::Unknown;
+    }
+    if ( partition->fileSystem().type() == FileSystem::Luks )
+    {
+        const auto* inner = dynamic_cast< const FS::luks& >( partition->fileSystem() ).innerFS();
+        return inner ? inner->type() : FileSystem::Unknown;
+    }
+    if ( partition->fileSystem().type() == FileSystem::Luks2 )
+    {
+        const auto* inner = dynamic_cast< const FS::luks2& >( partition->fileSystem() ).innerFS();
+        return inner ? inner->type() : FileSystem::Unknown;
+    }
+    return partition->fileSystem().type();
+}
+
 bool
 PartitionViewStep::isNextEnabled() const
 {
@@ -417,7 +442,15 @@ PartitionViewStep::isNextEnabled() const
 
     if ( m_manualPartitionPage && m_widget->currentWidget() == m_manualPartitionPage )
     {
-        return m_core->hasRootMountPoint();
+        if ( !m_core->hasRootMountPoint() )
+        {
+            return false;
+        }
+        if ( m_config->snapshotsEnabled() )
+        {
+            return rootFilesystemType( m_core->findPartitionByMountPoint( "/" ) ) == FileSystem::Btrfs;
+        }
+        return true;
     }
 
     return false;

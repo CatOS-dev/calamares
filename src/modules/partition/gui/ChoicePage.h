@@ -25,6 +25,7 @@
 #include <QWidget>
 
 class QBoxLayout;
+class QCheckBox;
 class QComboBox;
 class QLabel;
 class QListView;
@@ -139,6 +140,8 @@ private:
     void updateSwapChoicesTr();
     void updateChoiceButtonsTr();
     void updateActionDescriptionsTr();
+    void updateSnapshotsUi();
+    QString selectedRootFilesystem() const;
 
     Config* m_config;
     bool m_nextEnabled;
@@ -157,7 +160,9 @@ private:
     QComboBox* m_eraseSwapChoiceComboBox = nullptr;  // UI, see also Config's swap choice
     QComboBox* m_eraseFsTypesChoiceComboBox = nullptr;  // UI, see also Config's erase-mode FS
     QComboBox* m_replaceFsTypesChoiceComboBox = nullptr;  // UI, see also Config's erase-mode FS
-
+    QCheckBox* m_snapshotCheckBox = nullptr;
+    QLabel* m_snapshotDescription = nullptr;
+    QLabel* m_bootloaderSupportLabel = nullptr;
 
     DeviceInfoWidget* m_deviceInfoWidget;
 

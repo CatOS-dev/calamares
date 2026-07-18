@@ -131,7 +131,12 @@ doAutopartition( PartitionCoreModule* core, Device* dev, Choices::AutoPartitionO
 
     core->createPartitionTable( dev, partType );
 
-    if ( !isEfi )
+    const auto biosBootPartitionMode = gs->value( "bootloader.biosBootPartition" ).toString();
+    const bool createBiosBootPartition = !isEfi
+        && ( biosBootPartitionMode == QStringLiteral( "always" )
+             || ( biosBootPartitionMode == QStringLiteral( "gpt-only" )
+                  && partType == PartitionTable::TableType::gpt ) );
+    if ( createBiosBootPartition )
     {
         qint64 bios_part_sizeB = 1_MiB;
         qint64 biosSectorCount = Calamares::bytesToSectors( bios_part_sizeB, dev->logicalSize() );
@@ -149,8 +154,6 @@ doAutopartition( PartitionCoreModule* core, Device* dev, Choices::AutoPartitionO
         core->createPartition( dev, biosPartition, KPM_PARTITION_FLAG( BiosGrub ) );
         firstFreeSector = lastSector + 1;
     }
-
-    const auto bootloader = gs->value( "packagechooser_bootloader" ).toString();
 
     if ( createHybridBootloaderLayout || isEfi )
     {

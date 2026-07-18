@@ -9,13 +9,18 @@
 
 #include "Config.h"
 
+#include "compat/Variant.h"
+
 #include "core/PartUtils.h"
 
 #include "GlobalStorage.h"
 #include "JobQueue.h"
 #include "partition/PartitionSize.h"
+
+#include <QSysInfo>
 #include "utils/Logger.h"
 #include "utils/Variant.h"
+#include "utils/Yaml.h"
 
 Config::Config( QObject* parent )
     : QObject( parent )
@@ -412,101 +417,291 @@ Config::fillConfigurationFSTypes( const QVariantMap& configurationMap )
     m_eraseFsTypeChoice = fsRealName;
     m_replaceFileSystemChoice = fsRealName;
 
-    if (m_configurationMap.isEmpty()) {
-        Q_EMIT eraseModeFilesystemChanged( m_eraseFsTypeChoice );
-        Q_EMIT replaceModeFilesystemChanged( m_replaceFileSystemChoice );
+    m_defaultFsName = fsRealName;
+    Q_EMIT eraseModeFilesystemChanged( m_eraseFsTypeChoice );
+    Q_EMIT replaceModeFilesystemChanged( m_replaceFileSystemChoice );
+}
+
+static QVariantMap
+mergeConfigurationMaps( QVariantMap base, const QVariantMap& overlay )
+{
+    for ( auto it = overlay.constBegin(); it != overlay.constEnd(); ++it )
+    {
+        const auto existing = base.value( it.key() );
+        if ( Calamares::typeOf( existing ) == Calamares::MapVariantType
+             && Calamares::typeOf( it.value() ) == Calamares::MapVariantType )
+        {
+            base.insert( it.key(), mergeConfigurationMaps( existing.toMap(), it.value().toMap() ) );
+        }
+        else
+        {
+            base.insert( it.key(), it.value() );
+        }
+    }
+    return base;
+}
+
+static QString
+normalizedArchitecture()
+{
+    const auto architecture = QSysInfo::currentCpuArchitecture().toLower();
+    if ( architecture == QStringLiteral( "amd64" ) )
+    {
+        return QStringLiteral( "x86_64" );
+    }
+    if ( architecture == QStringLiteral( "arm64" ) )
+    {
+        return QStringLiteral( "aarch64" );
+    }
+    return architecture;
+}
+
+static bool
+profileSupportsPlatform( const QVariantMap& profile, const QString& firmware, const QString& architecture )
+{
+    const auto platforms = Calamares::getList( profile, "platforms" );
+    if ( platforms.isEmpty() )
+    {
+        return true;
+    }
+    for ( const auto& value : platforms )
+    {
+        const auto platform = value.toMap();
+        if ( Calamares::getString( platform, "firmware" ) != firmware )
+        {
+            continue;
+        }
+        auto architectures = Calamares::getStringList( platform, "architectures" );
+        architectures.replaceInStrings( QStringLiteral( "amd64" ), QStringLiteral( "x86_64" ) );
+        architectures.replaceInStrings( QStringLiteral( "arm64" ), QStringLiteral( "aarch64" ) );
+        if ( architectures.contains( architecture ) )
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void
+Config::loadBootloaderProfiles( const QVariantMap& configurationMap )
+{
+    bool found = false;
+    m_bootloaderProfiles = Calamares::getSubMap( configurationMap, "bootloaderProfiles", found );
+    const auto profilesFile = Calamares::getString( configurationMap, "bootloaderProfilesFile" );
+    if ( profilesFile.isEmpty() )
+    {
+        return;
+    }
+
+    bool ok = false;
+    const auto registry = Calamares::YAML::load( profilesFile, &ok );
+    if ( !ok )
+    {
+        cError() << "Could not load bootloader profiles from" << profilesFile;
+        return;
+    }
+    bool providersFound = false;
+    const auto providers = Calamares::getSubMap( registry, "providers", providersFound );
+    if ( providersFound )
+    {
+        m_bootloaderProfiles = providers;
+    }
+    m_defaultBootloader = Calamares::getString( registry, "defaultProvider", m_defaultBootloader );
+}
+
+static QVariantMap
+legacyBootloaderProfiles( const QVariantMap& configurationMap )
+{
+    QVariantMap profiles;
+    for ( const auto& value : Calamares::getList( configurationMap, "bootloaderOverrides" ) )
+    {
+        auto partition = value.toMap();
+        const auto name = partition.take( QStringLiteral( "name" ) ).toString();
+        if ( name.isEmpty() )
+        {
+            continue;
+        }
+        QVariantMap profile;
+        profile.insert( QStringLiteral( "partition" ), partition );
+        profiles.insert( name, profile );
+    }
+    return profiles;
+}
+
+void
+Config::applyConfigurationMap( const QVariantMap& configurationMap, bool preserveChoices )
+{
+    const auto previousInstallChoice = m_installChoice;
+    const auto previousSwapChoice = m_swapChoice;
+    const auto previousEraseFilesystem = m_eraseFsTypeChoice;
+    const auto previousReplaceFilesystem = m_replaceFileSystemChoice;
+
+    m_requiredStorageGiB = Calamares::getDouble( configurationMap, "requiredStorage", -1.0 );
+    m_swapChoices = getSwapChoices( configurationMap );
+
+    bool nameFound = false;
+    if ( !preserveChoices )
+    {
+        m_initialInstallChoice
+            = installChoiceNames().find( Calamares::getString( configurationMap, "initialPartitioningChoice" ), nameFound );
+        setInstallChoice( m_initialInstallChoice );
+
+        m_initialSwapChoice
+            = swapChoiceNames().find( Calamares::getString( configurationMap, "initialSwapChoice" ), nameFound );
+        if ( !m_swapChoices.contains( m_initialSwapChoice ) )
+        {
+            cWarning() << "Configuration for *initialSwapChoice* is not one of the *userSwapChoices*";
+            if ( nameFound )
+            {
+                cWarning() << Logger::SubEntry << "Choice" << swapChoiceNames().find( m_initialSwapChoice ) << "added.";
+                m_swapChoices.insert( m_initialSwapChoice );
+            }
+            m_initialSwapChoice = pickOne( m_swapChoices );
+        }
+        setSwapChoice( m_initialSwapChoice );
+    }
+    else
+    {
+        setInstallChoice( previousInstallChoice );
+        setSwapChoice( m_swapChoices.contains( previousSwapChoice ) ? previousSwapChoice : pickOne( m_swapChoices ) );
+    }
+
+    m_allowZfsEncryption = Calamares::getBool( configurationMap, "allowZfsEncryption", true );
+    m_allowManualPartitioning = Calamares::getBool( configurationMap, "allowManualPartitioning", true );
+    m_preCheckEncryption = Calamares::getBool( configurationMap, "preCheckEncryption", false );
+    m_showNotEncryptedBootMessage = Calamares::getBool( configurationMap, "showNotEncryptedBootMessage", true );
+    m_snapshotsAllowed = Calamares::getBool( configurationMap, "allowSnapshots", true );
+    m_requiredPartitionTableType = Calamares::getStringList( configurationMap, "requiredPartitionTableType" );
+
+    bool bogus = true;
+    const auto lvmConfiguration = Calamares::getSubMap( configurationMap, "lvm", bogus );
+    m_isLVMEnabled = Calamares::getBool( lvmConfiguration, "enable", true );
+    m_essentialMounts = Calamares::getStringList( configurationMap, "essentialMounts" );
+
+    auto* gs = Calamares::JobQueue::instance()->globalStorage();
+    gs->insert( "armInstall", Calamares::getBool( configurationMap, "armInstall", false ) );
+    gs->remove( PartUtils::efiFilesystemRecommendedSizeGSKey() );
+    gs->remove( PartUtils::efiFilesystemMinimumSizeGSKey() );
+    fillGSConfigurationEFI( gs, configurationMap );
+    fillConfigurationFSTypes( configurationMap );
+    if ( preserveChoices )
+    {
+        if ( m_eraseFsTypes.contains( previousEraseFilesystem ) )
+        {
+            setEraseFsTypeChoice( previousEraseFilesystem );
+        }
+        if ( m_eraseFsTypes.contains( previousReplaceFilesystem ) )
+        {
+            setReplaceFilesystemChoice( previousReplaceFilesystem );
+        }
     }
 }
 
 void
 Config::setConfigurationMap( const QVariantMap& configurationMap )
 {
-    // Settings that overlap with the Welcome module
-    m_requiredStorageGiB = Calamares::getDouble( configurationMap, "requiredStorage", -1.0 );
-    m_swapChoices = getSwapChoices( configurationMap );
-
-    bool nameFound = false;  // In the name table (ignored, falls back to first entry in table)
-    m_initialInstallChoice
-        = installChoiceNames().find( Calamares::getString( configurationMap, "initialPartitioningChoice" ), nameFound );
-    setInstallChoice( m_initialInstallChoice );
-
-    m_initialSwapChoice
-        = swapChoiceNames().find( Calamares::getString( configurationMap, "initialSwapChoice" ), nameFound );
-    if ( !m_swapChoices.contains( m_initialSwapChoice ) )
+    m_configurationMap = configurationMap;
+    loadBootloaderProfiles( configurationMap );
+    const bool usesModernProfiles = configurationMap.contains( QStringLiteral( "bootloaderProfiles" ) )
+        || !Calamares::getString( configurationMap, "bootloaderProfilesFile" ).isEmpty();
+    m_legacyBootloaderOverrides = !usesModernProfiles;
+    if ( m_legacyBootloaderOverrides )
     {
-        cWarning() << "Configuration for *initialSwapChoice* is not one of the *userSwapChoices*";
-        if ( nameFound )
-        {
-            cWarning() << Logger::SubEntry << "Choice" << swapChoiceNames().find( m_initialSwapChoice ) << "added.";
-            m_swapChoices.insert( m_initialSwapChoice );
-        }
-        m_initialSwapChoice = pickOne( m_swapChoices );
+        m_bootloaderProfiles = legacyBootloaderProfiles( configurationMap );
     }
-    setSwapChoice( m_initialSwapChoice );
+    applyConfigurationMap( configurationMap, false );
+}
 
-    m_allowZfsEncryption = Calamares::getBool( configurationMap, "allowZfsEncryption", true );
+bool
+Config::snapshotsAvailableFor( const QString& filesystemName ) const
+{
+    const auto canonical = PartUtils::canonicalFilesystemName( filesystemName, nullptr );
+    return m_snapshotsSupported && m_snapshotRequiredFileSystems.contains( canonical );
+}
 
-    m_allowManualPartitioning = Calamares::getBool( configurationMap, "allowManualPartitioning", true );
-    m_preCheckEncryption = Calamares::getBool( configurationMap, "preCheckEncryption", false );
-    m_showNotEncryptedBootMessage = Calamares::getBool( configurationMap, "showNotEncryptedBootMessage", true );
-    m_requiredPartitionTableType = Calamares::getStringList( configurationMap, "requiredPartitionTableType" );
-
+void
+Config::setSnapshotsEnabled( bool enabled )
+{
+    enabled = enabled && m_snapshotsSupported;
+    if ( enabled == m_snapshotsEnabled )
     {
-        bool bogus = true;
-        const auto lvmConfiguration = Calamares::getSubMap( configurationMap, "lvm", bogus );
-        m_isLVMEnabled = Calamares::getBool( lvmConfiguration, "enable", true );
+        return;
     }
-
-    m_essentialMounts= Calamares::getStringList( configurationMap, "essentialMounts" );
-
-    Calamares::GlobalStorage* gs = Calamares::JobQueue::instance()->globalStorage();
-    gs->insert( "armInstall", Calamares::getBool( configurationMap, "armInstall", false ) );
-    fillGSConfigurationEFI( gs, configurationMap );
-    fillConfigurationFSTypes( configurationMap );
-
-    if (m_configurationMap.isEmpty()) {
-        m_configurationMap = configurationMap;
-    } else {
-        Q_EMIT configurationChanged();
+    m_snapshotsEnabled = enabled;
+    if ( auto* gs = Calamares::JobQueue::instanceGlobalStorage() )
+    {
+        gs->insert( "snapshots.enabled", enabled );
+        gs->insert( "snapshots.manager", enabled ? m_snapshotsManager : QString() );
     }
+    Q_EMIT snapshotsChanged( enabled );
 }
 
 void
 Config::fillGSSecondaryConfiguration()
 {
-    // If there's no setting (e.g. from the welcome page) for required storage
-    // then use ours, if it was set.
     auto* gs = Calamares::JobQueue::instance() ? Calamares::JobQueue::instance()->globalStorage() : nullptr;
-    if ( m_requiredStorageGiB >= 0.0 && gs && !gs->contains( "requiredStorageGiB" ) )
+    if ( !gs )
+    {
+        return;
+    }
+    if ( m_requiredStorageGiB >= 0.0 && !gs->contains( "requiredStorageGiB" ) )
     {
         gs->insert( "requiredStorageGiB", m_requiredStorageGiB );
     }
 
-    // Use bootloader-specific values if specified
-    const auto bootloader = gs->value( "packagechooser_bootloader" ).toString();
-    auto bootloaderOverrides = Calamares::getList( m_configurationMap, "bootloaderOverrides" );
+    const auto chooserBootloader = gs->value( "packagechooser_bootloader" ).toString();
+    const auto bootloader = chooserBootloader.isEmpty()
+        ? gs->value( "bootloader.selected" ).toString()
+        : chooserBootloader;
+    const auto selectedBootloader = bootloader.isEmpty() ? m_defaultBootloader : bootloader;
+    gs->insert( "bootloader.selected", selectedBootloader );
 
-    if (m_bootloader != bootloader) {
-        for ( const auto& bootloaderEntry : std::as_const( bootloaderOverrides ) )
-        {
-            const QVariantMap& bootloaderConfiguration = bootloaderEntry.toMap();
+    const auto profile = m_bootloaderProfiles.value( selectedBootloader ).toMap();
+    const auto firmware = PartUtils::isEfiSystem() ? QStringLiteral( "efi" ) : QStringLiteral( "bios" );
+    const auto architecture = normalizedArchitecture();
+    m_bootloaderSupported = m_legacyBootloaderOverrides
+        || ( !profile.isEmpty() && profileSupportsPlatform( profile, firmware, architecture ) );
+    m_bootloaderSupportError.clear();
+    if ( profile.isEmpty() && !m_legacyBootloaderOverrides )
+    {
+        m_bootloaderSupportError = tr( "The selected boot method is not defined." );
+    }
+    else if ( !m_bootloaderSupported )
+    {
+        m_bootloaderSupportError = tr( "The selected boot method does not support %1 on %2." )
+                                           .arg( firmware, architecture );
+    }
+    gs->insert( "bootloader.supported", m_bootloaderSupported );
+    gs->insert( "bootloader.supportError", m_bootloaderSupportError );
 
-            if (bootloaderConfiguration[ "name" ].toString().isEmpty()) {
-                continue;
-            }
+    bool partitionFound = false;
+    const auto partitionProfile = Calamares::getSubMap( profile, "partition", partitionFound );
+    const auto biosBootPartition = Calamares::getString( partitionProfile, "biosBootPartition", QStringLiteral( "never" ) );
+    gs->insert( "bootloader.biosBootPartition", biosBootPartition );
 
-            if ( bootloaderConfiguration["name"].toString() == m_bootloader ) {
-                setConfigurationMap( m_configurationMap );
-                break;
-            }
+    bool snapshotsFound = false;
+    const auto snapshotProfile = Calamares::getSubMap( profile, "snapshots", snapshotsFound );
+    m_snapshotsSupported = m_snapshotsAllowed && snapshotsFound && !snapshotProfile.isEmpty();
+    m_snapshotsManager = Calamares::getString( snapshotProfile, "manager" );
+    m_snapshotRequiredFileSystems = Calamares::getStringList( snapshotProfile, "requiredFileSystems" );
+    for ( auto& filesystem : m_snapshotRequiredFileSystems )
+    {
+        filesystem = PartUtils::canonicalFilesystemName( filesystem, nullptr );
+    }
+    if ( !m_snapshotsSupported )
+    {
+        setSnapshotsEnabled( false );
+    }
+    gs->insert( "snapshots.supported", m_snapshotsSupported );
+    gs->insert( "snapshots.enabled", m_snapshotsEnabled );
+    gs->insert( "snapshots.manager", m_snapshotsEnabled ? m_snapshotsManager : QString() );
+    gs->insert( "snapshots.requiredFileSystems", m_snapshotRequiredFileSystems );
 
-            if (bootloaderConfiguration["name"].toString() == bootloader )
-            {
-                setConfigurationMap( bootloaderConfiguration );
-                break;
-            }
-        }
-
-        m_bootloader = bootloader;
+    if ( m_bootloader != selectedBootloader )
+    {
+        const auto effectiveConfiguration = mergeConfigurationMaps( m_configurationMap, partitionProfile );
+        applyConfigurationMap( effectiveConfiguration, true );
+        m_bootloader = selectedBootloader;
+        Q_EMIT configurationChanged();
     }
 }

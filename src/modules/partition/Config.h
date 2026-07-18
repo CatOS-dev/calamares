@@ -149,6 +149,14 @@ public:
      * This is not "Unknown" or "Unformatted"
      */
     FileSystem::Type defaultFsType() const { return m_defaultFsType; }
+    QString defaultFsName() const { return m_defaultFsName; }
+
+    bool bootloaderSupported() const { return m_bootloaderSupported; }
+    QString bootloaderSupportError() const { return m_bootloaderSupportError; }
+    bool snapshotsSupported() const { return m_snapshotsSupported; }
+    bool snapshotsEnabled() const { return m_snapshotsEnabled; }
+    bool snapshotsAvailableFor( const QString& filesystemName ) const;
+    QString snapshotsManager() const { return m_snapshotsManager; }
 
     /// @brief Is manual partitioning allowed (not explicitly disabled in the config file)?
     bool allowManualPartitioning() const { return m_allowManualPartitioning; }
@@ -196,22 +204,37 @@ public Q_SLOTS:
     void setSwapChoice( SwapChoice );
     void setEraseFsTypeChoice( const QString& filesystemName );  ///< See property eraseModeFilesystem
     void setReplaceFilesystemChoice( const QString& filesystemName );
+    void setSnapshotsEnabled( bool enabled );
 
 Q_SIGNALS:
     void installChoiceChanged( InstallChoice );
     void swapChoiceChanged( SwapChoice );
     void eraseModeFilesystemChanged( const QString& );
     void replaceModeFilesystemChanged( const QString& );
+    void snapshotsChanged( bool enabled );
     void configurationChanged();
 
 private:
     /** @brief Handle FS-type configuration, for erase and default */
     void fillConfigurationFSTypes( const QVariantMap& configurationMap );
+    void applyConfigurationMap( const QVariantMap& configurationMap, bool preserveChoices );
+    void loadBootloaderProfiles( const QVariantMap& configurationMap );
     EraseFsTypesSet m_eraseFsTypes;
     QString m_eraseFsTypeChoice;
     QString m_replaceFileSystemChoice;
     QString m_bootloader;
+    QString m_defaultBootloader = QStringLiteral( "grub" );
+    QString m_defaultFsName;
     FileSystem::Type m_defaultFsType;
+    QVariantMap m_bootloaderProfiles;
+    bool m_legacyBootloaderOverrides = false;
+    bool m_bootloaderSupported = true;
+    QString m_bootloaderSupportError;
+    bool m_snapshotsAllowed = true;
+    bool m_snapshotsSupported = false;
+    bool m_snapshotsEnabled = false;
+    QString m_snapshotsManager;
+    QStringList m_snapshotRequiredFileSystems;
 
     SwapChoiceSet m_swapChoices;
     SwapChoice m_initialSwapChoice = NoSwap;

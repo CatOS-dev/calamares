@@ -49,11 +49,13 @@
 
 #include <QBoxLayout>
 #include <QButtonGroup>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDir>
 #include <QFutureWatcher>
 #include <QLabel>
 #include <QListView>
+#include <QSignalBlocker>
 #include <QtConcurrent/QtConcurrent>
 
 using Calamares::Partition::findPartitionByPath;
@@ -143,6 +145,11 @@ ChoicePage::retranslate()
     updateSwapChoicesTr();
     updateChoiceButtonsTr();
     updateActionDescriptionsTr();
+    if ( m_snapshotCheckBox )
+    {
+        m_snapshotCheckBox->setText( tr( "Enable system snapshots", "@option:check" ) );
+        updateSnapshotsUi();
+    }
 }
 
 /** @brief Sets the @p model for the given @p box and adjusts UI sizes to match.
@@ -313,6 +320,24 @@ ChoicePage::setupChoices()
     m_itemsLayout->addWidget( m_somethingElseButton );
     m_somethingElseButton->addToGroup( m_grp, InstallChoice::Manual );
 
+    m_bootloaderSupportLabel = new QLabel( this );
+    m_bootloaderSupportLabel->setWordWrap( true );
+    m_bootloaderSupportLabel->setObjectName( QStringLiteral( "bootloaderSupportLabel" ) );
+    m_itemsLayout->addWidget( m_bootloaderSupportLabel );
+
+    auto* snapshotPanel = new QWidget( this );
+    auto* snapshotLayout = new QVBoxLayout( snapshotPanel );
+    snapshotLayout->setContentsMargins( 0, 0, 0, 0 );
+    snapshotLayout->setSpacing( Calamares::defaultFontHeight() / 4 );
+    m_snapshotCheckBox = new QCheckBox( snapshotPanel );
+    m_snapshotDescription = new QLabel( snapshotPanel );
+    m_snapshotDescription->setWordWrap( true );
+    snapshotLayout->addWidget( m_snapshotCheckBox );
+    snapshotLayout->addWidget( m_snapshotDescription );
+    m_itemsLayout->addWidget( snapshotPanel );
+    connect( m_snapshotCheckBox, &QCheckBox::toggled, m_config, &Config::setSnapshotsEnabled );
+    connect( m_config, &Config::snapshotsChanged, this, [ this ] { updateSnapshotsUi(); } );
+
     m_itemsLayout->addStretch();
 
     connect( m_grp,
@@ -355,6 +380,7 @@ ChoicePage::setupChoices()
 
     updateSwapChoicesTr();
     updateChoiceButtonsTr();
+    updateSnapshotsUi();
 }
 
 /**
@@ -449,7 +475,10 @@ ChoicePage::continueApplyDeviceChoice()
     cDebug() << "Previous device" << m_lastSelectedDeviceIndex << "new device" << m_drivesCombo->currentIndex();
 
     m_lastSelectedDeviceIndex = m_drivesCombo->currentIndex();
-    m_config->setInstallChoice( m_config->initialInstallChoice() );
+    if ( m_config->installChoice() == InstallChoice::NoChoice )
+    {
+        m_config->setInstallChoice( m_config->initialInstallChoice() );
+    }
     checkInstallChoiceRadioButton( m_config->installChoice() );
 
     Q_EMIT actionChosen();
@@ -477,6 +506,7 @@ ChoicePage::onActionChanged()
         applyActionChoice( m_config->installChoice() );
     }
 
+    updateSnapshotsUi();
     updateNextEnabled();
 }
 
@@ -691,10 +721,21 @@ ChoicePage::onHomeCheckBoxStateChanged()
 void
 ChoicePage::onConfigurationChanged()
 {
-    m_eraseFsTypesChoiceComboBox->clear();
-    m_eraseFsTypesChoiceComboBox->addItems(m_config->eraseFsTypes());
-    m_replaceFsTypesChoiceComboBox->clear();
-    m_replaceFsTypesChoiceComboBox->addItems(m_config->eraseFsTypes());
+    if ( m_eraseFsTypesChoiceComboBox )
+    {
+        const QSignalBlocker blocker( m_eraseFsTypesChoiceComboBox );
+        m_eraseFsTypesChoiceComboBox->clear();
+        m_eraseFsTypesChoiceComboBox->addItems( m_config->eraseFsTypes() );
+        m_eraseFsTypesChoiceComboBox->setCurrentText( m_config->eraseFsType() );
+    }
+    if ( m_replaceFsTypesChoiceComboBox )
+    {
+        const QSignalBlocker blocker( m_replaceFsTypesChoiceComboBox );
+        m_replaceFsTypesChoiceComboBox->clear();
+        m_replaceFsTypesChoiceComboBox->addItems( m_config->eraseFsTypes() );
+        m_replaceFsTypesChoiceComboBox->setCurrentText( m_config->replaceModeFilesystem() );
+    }
+    updateSnapshotsUi();
     ChoicePage::applyDeviceChoice();
 }
 
@@ -1540,6 +1581,72 @@ ChoicePage::getOsproberEntriesForDevice( Device* device ) const
     return eList;
 }
 
+QString
+ChoicePage::selectedRootFilesystem() const
+{
+    switch ( m_config->installChoice() )
+    {
+    case InstallChoice::Erase:
+        return m_config->eraseFsType();
+    case InstallChoice::Replace:
+        return m_config->replaceModeFilesystem();
+    case InstallChoice::Alongside:
+        return m_config->defaultFsName();
+    case InstallChoice::Manual:
+    case InstallChoice::NoChoice:
+        return QString();
+    }
+    return QString();
+}
+
+void
+ChoicePage::updateSnapshotsUi()
+{
+    if ( !m_snapshotCheckBox || !m_snapshotDescription || !m_bootloaderSupportLabel )
+    {
+        return;
+    }
+
+    m_bootloaderSupportLabel->setVisible( !m_config->bootloaderSupported() );
+    m_bootloaderSupportLabel->setText( m_config->bootloaderSupportError() );
+
+    const bool manual = m_config->installChoice() == InstallChoice::Manual;
+    const auto filesystem = selectedRootFilesystem();
+    const bool available = m_config->bootloaderSupported() && m_config->snapshotsSupported()
+        && ( manual || m_config->snapshotsAvailableFor( filesystem ) );
+    if ( !available && m_config->snapshotsEnabled() )
+    {
+        m_config->setSnapshotsEnabled( false );
+    }
+
+    const QSignalBlocker blocker( m_snapshotCheckBox );
+    m_snapshotCheckBox->setChecked( m_config->snapshotsEnabled() );
+    m_snapshotCheckBox->setEnabled( available );
+    m_snapshotCheckBox->setVisible( true );
+
+    if ( !m_config->snapshotsSupported() )
+    {
+        m_snapshotDescription->setText(
+            tr( "The selected boot method does not support bootable system snapshots.", "@info" ) );
+    }
+    else if ( manual )
+    {
+        m_snapshotDescription->setText(
+            tr( "Requires a Btrfs root filesystem. The manual layout is checked before continuing.", "@info" ) );
+    }
+    else if ( !available )
+    {
+        m_snapshotDescription->setText(
+            tr( "System snapshots require Btrfs as the root filesystem.", "@info" ) );
+    }
+    else
+    {
+        m_snapshotDescription->setText(
+            tr( "Use Snapper and expose bootable snapshots through the selected boot method.", "@info" ) );
+    }
+    updateNextEnabled();
+}
+
 bool
 ChoicePage::isNextEnabled() const
 {
@@ -1549,6 +1656,12 @@ ChoicePage::isNextEnabled() const
 bool
 ChoicePage::calculateNextEnabled() const
 {
+    if ( !m_config->bootloaderSupported() )
+    {
+        cDebug() << "Selected boot method is unsupported:" << m_config->bootloaderSupportError();
+        return false;
+    }
+
     auto sm_p = m_beforePartitionBarsView ? m_beforePartitionBarsView->selectionModel() : nullptr;
 
     switch ( m_config->installChoice() )

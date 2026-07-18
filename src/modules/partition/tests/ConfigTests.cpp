@@ -37,6 +37,8 @@ private Q_SLOTS:
     void testLegacySize();
     void testAll();
     void testWeirdConfig();
+    void testBootloaderProfiles();
+    void testSnapshotsCanBeDisabled();
 
     void testNormalFstab();
     void testWeirdFstab();
@@ -225,6 +227,72 @@ ConfigTests::testWeirdConfig()
 
         QCOMPARE( gs->value( "efiSystemPartitionName" ).toString(), QStringLiteral( "bigmin" ) );
     }
+}
+
+
+void
+ConfigTests::testBootloaderProfiles()
+{
+    Config c( nullptr );
+    auto* gs = Calamares::JobQueue::instanceGlobalStorage();
+    QVERIFY( gs );
+    gs->clear();
+
+    bool ok = false;
+    c.setConfigurationMap(
+        Calamares::YAML::load( QStringLiteral( BUILD_AS_TEST "/4-bootloader-profiles.conf" ), &ok ) );
+    QVERIFY( ok );
+
+    gs->insert( "packagechooser_bootloader", QStringLiteral( "limine" ) );
+    c.fillGSSecondaryConfiguration();
+
+    QCOMPARE( gs->value( "bootloader.selected" ).toString(), QStringLiteral( "limine" ) );
+    QCOMPARE( gs->value( "efiSystemPartition" ).toString(), QStringLiteral( "/boot/efi" ) );
+    QCOMPARE( PartUtils::efiFilesystemRecommendedSize(), 2LL * 1024 * 1024 * 1024 );
+    QCOMPARE( c.swapChoices().size(), 2 );
+    QVERIFY( !c.allowManualPartitioning() );
+    QVERIFY( c.bootloaderSupported() );
+    QVERIFY( c.snapshotsSupported() );
+    QVERIFY( c.snapshotsAvailableFor( QStringLiteral( "btrfs" ) ) );
+    QVERIFY( !c.snapshotsAvailableFor( QStringLiteral( "ext4" ) ) );
+
+    c.setSnapshotsEnabled( true );
+    QVERIFY( c.snapshotsEnabled() );
+    QCOMPARE( gs->value( "snapshots.enabled" ).toBool(), true );
+    QCOMPARE( gs->value( "snapshots.manager" ).toString(), QStringLiteral( "snapper" ) );
+
+    c.setEraseFsTypeChoice( QStringLiteral( "ext4" ) );
+    c.setReplaceFilesystemChoice( QStringLiteral( "ext4" ) );
+    gs->insert( "packagechooser_bootloader", QStringLiteral( "grub" ) );
+    c.fillGSSecondaryConfiguration();
+    QCOMPARE( gs->value( "bootloader.selected" ).toString(), QStringLiteral( "grub" ) );
+    QCOMPARE( PartUtils::efiFilesystemRecommendedSize(), 300_MiB );
+    QCOMPARE( c.eraseFsType(), QStringLiteral( "ext4" ) );
+    QCOMPARE( c.replaceModeFilesystem(), QStringLiteral( "ext4" ) );
+    QCOMPARE( c.swapChoices().size(), 2 );
+    QVERIFY( !c.allowManualPartitioning() );
+}
+
+void
+ConfigTests::testSnapshotsCanBeDisabled()
+{
+    Config c( nullptr );
+    auto* gs = Calamares::JobQueue::instanceGlobalStorage();
+    QVERIFY( gs );
+    gs->clear();
+
+    bool ok = false;
+    auto configuration
+        = Calamares::YAML::load( QStringLiteral( BUILD_AS_TEST "/4-bootloader-profiles.conf" ), &ok );
+    QVERIFY( ok );
+    configuration.insert( QStringLiteral( "allowSnapshots" ), false );
+    c.setConfigurationMap( configuration );
+    gs->insert( "packagechooser_bootloader", QStringLiteral( "limine" ) );
+    c.fillGSSecondaryConfiguration();
+
+    QVERIFY( !c.snapshotsSupported() );
+    QVERIFY( !c.snapshotsEnabled() );
+    QCOMPARE( gs->value( "snapshots.supported" ).toBool(), false );
 }
 
 void

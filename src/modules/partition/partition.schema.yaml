@@ -20,6 +20,14 @@ properties:
             mountPoint: { type: string }
         additionalProperties: false
 
+
+    allowSnapshots: { type: boolean }
+    bootloaderProfilesFile: { type: string }
+    bootloaderProfiles:
+        type: object
+        additionalProperties:
+            type: object
+
     bootloaderOverrides:
         type: array
         items:
