@@ -61,3 +61,10 @@ if(BUILD_TESTING AND BUILD_SCHEMA_TESTING AND Python_Interpreter_FOUND)
         endif()
     endforeach()
 endif()
+
+if(BUILD_TESTING AND Python_Interpreter_FOUND)
+    add_test(
+        NAME networkcfg-resolver-copy
+        COMMAND ${Python_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/networkcfg/tests/test_resolver_copy.py"
+    )
+endif()

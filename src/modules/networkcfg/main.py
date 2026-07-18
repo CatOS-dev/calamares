@@ -93,6 +93,13 @@ def path_pair(root_mount_point, relative_path):
     return ("/" + relative_path, os.path.join(root_mount_point, relative_path))
 
 
+def copy_resolver_config(source, target):
+    """Copy the active resolver contents into the target as a regular file."""
+    if os.path.lexists(target):
+        os.remove(target)
+    shutil.copy2(source, target, follow_symlinks=True)
+
+
 def run():
     """
     Setup network configuration
@@ -167,18 +174,12 @@ network:
 
             shutil.copy(source_cfg, target_cfg)
 
-    # We need to overwrite the default resolv.conf in the chroot.
+    # Target commands run through plain chroot(8), not arch-chroot(8), so
+    # they need a working resolver file before package and keyring jobs run.
     source_resolv, target_resolv = path_pair(root_mount_point, "etc/resolv.conf")
     if source_resolv != target_resolv and os.path.exists(source_resolv):
         try:
-            os.remove(target_resolv)
-        except Exception as err:
-            libcalamares.utils.debug(
-                "Couldn't remove {}: {}".format(target_resolv, err)
-                )
-
-        try:
-            shutil.copy(source_resolv, target_resolv, follow_symlinks=False)
+            copy_resolver_config(source_resolv, target_resolv)
         except Exception as err:
             libcalamares.utils.debug(
                 "Can't copy resolv.conf from {}: {}".format(source_resolv, err)
