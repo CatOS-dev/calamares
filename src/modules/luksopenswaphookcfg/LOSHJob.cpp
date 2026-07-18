@@ -104,6 +104,7 @@ LOSHJob::exec()
     if ( contents.isEmpty() )
     {
         contents << QStringLiteral( "# swap_device=" ) << QStringLiteral( "# crypt_swap_name=" )
+                 << QStringLiteral( "# unlock_method=" )
                  << QStringLiteral( "# keyfile_device=" ) << QStringLiteral( "# keyfile_filename=" )
                  << QStringLiteral( "# keyfile_device_mount_options" );
     }

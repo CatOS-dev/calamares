@@ -54,6 +54,10 @@ struct LOSHInfo
         {
             return keyfile_device_mount_options;
         }
+        if ( key == QStringLiteral( "unlock_method" ) )
+        {
+            return QStringLiteral( "keyfile" );
+        }
         return QString();
     }
 
