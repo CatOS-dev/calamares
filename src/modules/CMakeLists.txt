@@ -67,4 +67,8 @@ if(BUILD_TESTING AND Python_Interpreter_FOUND)
         NAME networkcfg-resolver-copy
         COMMAND ${Python_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/networkcfg/tests/test_resolver_copy.py"
     )
+    add_test(
+        NAME mount-propagation
+        COMMAND ${Python_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/mount/tests/test_mount_propagation.py"
+    )
 endif()

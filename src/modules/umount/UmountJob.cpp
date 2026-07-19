@@ -52,6 +52,19 @@ unmountTargetMounts( const QString& rootMountPoint )
                 .arg( rootMountPoint ),
             Calamares::JobResult::GenericError );
     }
+    auto propagationResult = Calamares::System::runCommand(
+        { "mount", "--make-rslave", targetMount.absolutePath() }, std::chrono::seconds( 10 ) );
+    if ( propagationResult.getExitCode() )
+    {
+        return Calamares::JobResult::error(
+            QCoreApplication::translate( UmountJob::staticMetaObject.className(),
+                                         "Could not isolate target system mounts." ),
+            QCoreApplication::translate( UmountJob::staticMetaObject.className(),
+                                         "Refusing to unmount '%1' because mount propagation could not be made "
+                                         "one-way. The live system may otherwise be affected. Details: %2" )
+                .arg( targetMount.absolutePath(), propagationResult.getOutput() ) );
+    }
+
     QString targetMountPath = targetMount.absolutePath();
     if ( !targetMountPath.endsWith( '/' ) )
     {

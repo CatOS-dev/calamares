@@ -221,6 +221,17 @@ def mount_zfs(root_mount_point, partition):
             raise ZfsException(_("Failed to set zfs mountpoint"))
 
 
+def is_bind_mount(mount_options_string):
+    """Return whether mount options request a bind or recursive bind mount."""
+    options = {option.strip() for option in mount_options_string.split(",") if option.strip()}
+    return bool(options.intersection({"bind", "rbind"}))
+
+
+def isolate_bind_mount(mount_point):
+    """Allow host-to-target propagation while blocking target-to-host propagation."""
+    subprocess.check_call(["mount", "--make-rslave", mount_point])
+
+
 def mount_partition(root_mount_point, partition, partitions, mount_options, mount_options_list, efi_location):
     """
     Do a single mount of @p partition inside @p root_mount_point.
@@ -270,11 +281,14 @@ def mount_partition(root_mount_point, partition, partitions, mount_options, moun
         mount_zfs(root_mount_point, partition)
     else:  # fstype == "zfs"
         mount_options_string = get_mount_options(fstype, mount_options, partition, efi_location)
-        if libcalamares.utils.mount(device,
-                                    mount_point,
-                                    fstype,
-                                    mount_options_string) != 0:
+        mount_result = libcalamares.utils.mount(device,
+                                                mount_point,
+                                                fstype,
+                                                mount_options_string)
+        if mount_result != 0:
             libcalamares.utils.warning("Cannot mount {}".format(device))
+        elif is_bind_mount(mount_options_string):
+            isolate_bind_mount(mount_point)
         mount_options_list.append({"mountpoint": raw_mount_point, "option_string": mount_options_string})
 
     # Special handling for btrfs subvolumes. Create the subvolumes listed in mount.conf
