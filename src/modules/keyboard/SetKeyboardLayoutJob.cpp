@@ -201,8 +201,8 @@ SetKeyboardLayoutJob::writeVConsoleData( const QString& vconsoleConfPath, const 
     }
     if ( keymap.isEmpty() )
     {
-        cDebug() << "Trying to use X11 layout" << m_layout << "as the virtual console layout";
-        keymap = m_layout;
+        cWarning() << "No virtual console keymap mapping for X11 layout" << m_layout << "; falling back to us";
+        keymap = QStringLiteral( "us" );
     }
 
     QStringList existingLines;

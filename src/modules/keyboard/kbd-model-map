@@ -33,6 +33,7 @@ de			de	pc105		-		terminate:ctrl_alt_bksp
 de			at	pc105		-		terminate:ctrl_alt_bksp
 la-latin1		latam	pc105		-		terminate:ctrl_alt_bksp
 us			us	pc105+inet	-		terminate:ctrl_alt_bksp
+us			cn	pc105		-		terminate:ctrl_alt_bksp
 ko			kr	pc105		-		terminate:ctrl_alt_bksp
 ro-std			ro	pc105		std		terminate:ctrl_alt_bksp
 de-latin1		de	pc105		-		terminate:ctrl_alt_bksp
