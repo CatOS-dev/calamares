@@ -15,8 +15,11 @@
 #ifdef HAVE_APPSTREAM_VERSION
 #include "ItemAppStream.h"
 #endif
+#include "Config.h"
 #include "PackageModel.h"
 
+#include "GlobalStorage.h"
+#include "JobQueue.h"
 #include "utils/Logger.h"
 
 #include <QtTest/QtTest>
@@ -31,6 +34,10 @@ void
 PackageChooserTests::initTestCase()
 {
     Logger::setupLogLevel( Logger::LOGDEBUG );
+    if ( !Calamares::JobQueue::instance() )
+    {
+        (void)new Calamares::JobQueue();
+    }
 }
 
 void
@@ -86,4 +93,62 @@ PackageChooserTests::testAppData()
               QStringLiteral( "Calamares is een installatieprogramma voor Linux distributies." ) );
     QVERIFY( !p2.screenshot.isNull() );
 #endif
+}
+
+void
+PackageChooserTests::testVisibilityEqualityExpression()
+{
+    auto* gs = Calamares::JobQueue::instance()->globalStorage();
+    gs->insert( QStringLiteral( "firmwareType" ), QStringLiteral( "bios" ) );
+    gs->insert( QStringLiteral( "secureboot.enabled" ), false );
+
+    QVariantList items {
+        QVariantMap {
+            { QStringLiteral( "id" ), QStringLiteral( "grub" ) },
+            { QStringLiteral( "name" ), QStringLiteral( "GRUB" ) },
+        },
+        QVariantMap {
+            { QStringLiteral( "id" ), QStringLiteral( "uki" ) },
+            { QStringLiteral( "name" ), QStringLiteral( "Unified Kernel Image" ) },
+            { QStringLiteral( "visibleWhen" ), QStringList { QStringLiteral( "firmwareType == 'efi'" ) } },
+        },
+    };
+    Config config;
+    config.setConfigurationMap( QVariantMap { { QStringLiteral( "items" ), items } } );
+
+    QCOMPARE( config.model()->packageCount(), 1 );
+    QCOMPARE( config.model()->packageData( 0 ).id, QStringLiteral( "grub" ) );
+}
+
+void
+PackageChooserTests::testVisibilityInequalityExpression()
+{
+    auto* gs = Calamares::JobQueue::instance()->globalStorage();
+    gs->insert( QStringLiteral( "firmwareType" ), QStringLiteral( "efi" ) );
+    gs->insert( QStringLiteral( "secureboot.enabled" ), true );
+
+    QVariantList items {
+        QVariantMap {
+            { QStringLiteral( "id" ), QStringLiteral( "grub" ) },
+            { QStringLiteral( "name" ), QStringLiteral( "GRUB" ) },
+        },
+        QVariantMap {
+            { QStringLiteral( "id" ), QStringLiteral( "uki" ) },
+            { QStringLiteral( "name" ), QStringLiteral( "Unified Kernel Image" ) },
+            { QStringLiteral( "visibleWhen" ), QStringList { QStringLiteral( "firmwareType == 'efi'" ) } },
+        },
+        QVariantMap {
+            { QStringLiteral( "id" ), QStringLiteral( "efistub" ) },
+            { QStringLiteral( "name" ), QStringLiteral( "Linux EFI Stub" ) },
+            { QStringLiteral( "visibleWhen" ),
+              QStringList { QStringLiteral( "firmwareType == 'efi'" ),
+                            QStringLiteral( "secureboot.enabled != true" ) } },
+        },
+    };
+    Config config;
+    config.setConfigurationMap( QVariantMap { { QStringLiteral( "items" ), items } } );
+
+    QCOMPARE( config.model()->packageCount(), 2 );
+    QCOMPARE( config.model()->packageData( 0 ).id, QStringLiteral( "grub" ) );
+    QCOMPARE( config.model()->packageData( 1 ).id, QStringLiteral( "uki" ) );
 }

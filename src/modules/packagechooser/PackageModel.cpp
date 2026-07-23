@@ -68,6 +68,7 @@ PackageItem::PackageItem( const QVariantMap& item_map )
     , screenshot( loadScreenshot( Calamares::getString( item_map, "screenshot" ) ) )
     , packageNames( Calamares::getStringList( item_map, "packages" ) )
     , netinstallData( getSubMap( item_map, "netinstall" ) )
+    , visibleWhen( Calamares::getStringList( item_map, "visibleWhen" ) )
 {
     if ( name.isEmpty() && id.isEmpty() )
     {

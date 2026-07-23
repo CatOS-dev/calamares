@@ -21,6 +21,9 @@
 #include <QDBusMessage>
 #include <QDBusPendingCall>
 #include <QDBusPendingReply>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QMutex>
 #include <QThread>
 
@@ -537,6 +540,34 @@ JobThread::~JobThread() {}
 
 JobQueue* JobQueue::s_instance = nullptr;
 
+static bool
+hostSecureBootEnabled()
+{
+    const QDir efivars( QStringLiteral( "/sys/firmware/efi/efivars" ) );
+    const QStringList variables = efivars.entryList(
+        QStringList { QStringLiteral( "SecureBoot-*" ) }, QDir::Files | QDir::Readable, QDir::Name );
+    if ( variables.isEmpty() )
+    {
+        return false;
+    }
+
+    QFile variable( efivars.filePath( variables.constFirst() ) );
+    if ( !variable.open( QIODevice::ReadOnly ) )
+    {
+        return false;
+    }
+    const QByteArray data = variable.read( 5 );
+    return data.size() >= 5 && data.at( 4 ) != 0;
+}
+
+static void
+initializeEnvironmentFacts( GlobalStorage* storage )
+{
+    const bool isEfi = QFileInfo::exists( QStringLiteral( "/sys/firmware/efi" ) );
+    storage->insert( QStringLiteral( "firmwareType" ), isEfi ? QStringLiteral( "efi" ) : QStringLiteral( "bios" ) );
+    storage->insert( QStringLiteral( "secureboot.enabled" ), isEfi && hostSecureBootEnabled() );
+}
+
 JobQueue*
 JobQueue::instance()
 {
@@ -555,6 +586,7 @@ JobQueue::JobQueue( QObject* parent )
 {
     Q_ASSERT( !s_instance );
     s_instance = this;
+    initializeEnvironmentFacts( m_storage );
 }
 
 

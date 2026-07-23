@@ -26,6 +26,8 @@
 #include "utils/Logger.h"
 #include "utils/Variant.h"
 
+#include <QRegularExpression>
+
 /** @brief This removes any values from @p groups that match @p source
  *
  * This is used to remove duplicates from the netinstallAdd structure
@@ -247,8 +249,107 @@ Config::prettyStatus() const
     return tr( "Install option: <strong>%1</strong>" ).arg( m_packageChoice.value_or( tr( "None" ) ) );
 }
 
+static std::optional< QVariant >
+parseConditionLiteral( const QString& source )
+{
+    const QString value = source.trimmed();
+    if ( value == QStringLiteral( "true" ) )
+    {
+        return QVariant( true );
+    }
+    if ( value == QStringLiteral( "false" ) )
+    {
+        return QVariant( false );
+    }
+    if ( value == QStringLiteral( "null" ) )
+    {
+        return QVariant();
+    }
+    if ( value.size() >= 2
+         && ( ( value.front() == QLatin1Char( '\'' ) && value.back() == QLatin1Char( '\'' ) )
+              || ( value.front() == QLatin1Char( '"' ) && value.back() == QLatin1Char( '"' ) ) ) )
+    {
+        return QVariant( value.mid( 1, value.size() - 2 ) );
+    }
+
+    bool ok = false;
+    const qlonglong integer = value.toLongLong( &ok );
+    if ( ok )
+    {
+        return QVariant::fromValue( integer );
+    }
+    return std::nullopt;
+}
+
+static bool
+conditionValuesEqual( const QVariant& actual, const QVariant& expected )
+{
+    if ( !expected.isValid() )
+    {
+        return !actual.isValid() || actual.isNull();
+    }
+    if ( !actual.isValid() )
+    {
+        return false;
+    }
+    if ( Calamares::typeOf( expected ) == Calamares::BoolVariantType )
+    {
+        return Calamares::typeOf( actual ) == Calamares::BoolVariantType && actual.toBool() == expected.toBool();
+    }
+    if ( Calamares::isIntegerVariantType( expected ) )
+    {
+        bool ok = false;
+        const qlonglong value = actual.toLongLong( &ok );
+        return ok && value == expected.toLongLong();
+    }
+    return actual.toString() == expected.toString();
+}
+
+static bool
+evaluateVisibilityCondition( const QString& expression, const Calamares::GlobalStorage* storage )
+{
+    static const QRegularExpression pattern(
+        QStringLiteral( R"(^\s*([A-Za-z_][A-Za-z0-9_.-]*)\s*(==|!=)\s*(.*?)\s*$)" ) );
+    const auto match = pattern.match( expression );
+    if ( !match.hasMatch() )
+    {
+        cWarning() << "Invalid PackageChooser visibility expression:" << expression;
+        return false;
+    }
+
+    const QString key = match.captured( 1 );
+    if ( !storage->contains( key ) )
+    {
+        cWarning() << "PackageChooser visibility variable is missing from GlobalStorage:" << key;
+        return false;
+    }
+
+    const auto expected = parseConditionLiteral( match.captured( 3 ) );
+    if ( !expected.has_value() )
+    {
+        cWarning() << "Invalid PackageChooser visibility literal in expression:" << expression;
+        return false;
+    }
+
+    const bool equal = conditionValuesEqual( storage->value( key ), expected.value() );
+    return match.captured( 2 ) == QStringLiteral( "==" ) ? equal : !equal;
+}
+
+static bool
+isPackageVisible( const PackageItem& package, const Calamares::GlobalStorage* storage )
+{
+    for ( const QString& condition : package.visibleWhen )
+    {
+        if ( !evaluateVisibilityCondition( condition, storage ) )
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 static void
-fillModel( PackageListModel* model, const QVariantList& items )
+fillModel( PackageListModel* model, const QVariantList& items, const Calamares::GlobalStorage* storage )
 {
     if ( items.isEmpty() )
     {
@@ -273,10 +374,23 @@ fillModel( PackageListModel* model, const QVariantList& items )
             continue;
         }
 
+        auto addPackage = [ model, storage, &item_map ]( PackageItem&& package )
+        {
+            package.visibleWhen = Calamares::getStringList( item_map, "visibleWhen" );
+            if ( isPackageVisible( package, storage ) )
+            {
+                model->addPackage( std::move( package ) );
+            }
+            else
+            {
+                cDebug() << "Hiding PackageChooser item" << package.id << "because visibleWhen is false.";
+            }
+        };
+
         if ( item_map.contains( "appdata" ) )
         {
 #ifdef HAVE_XML
-            model->addPackage( fromAppData( item_map ) );
+            addPackage( fromAppData( item_map ) );
 #else
             cWarning() << "Loading AppData XML is not supported.";
 #endif
@@ -292,7 +406,7 @@ fillModel( PackageListModel* model, const QVariantList& items )
             }
             if ( pool && poolOk )
             {
-                model->addPackage( fromAppStream( *pool, item_map ) );
+                addPackage( fromAppStream( *pool, item_map ) );
             }
 #else
             cWarning() << "Loading AppStream data is not supported.";
@@ -300,7 +414,7 @@ fillModel( PackageListModel* model, const QVariantList& items )
         }
         else
         {
-            model->addPackage( PackageItem( item_map ) );
+            addPackage( PackageItem( item_map ) );
         }
     }
     cDebug() << Logger::SubEntry << "Loaded PackageChooser with" << model->packageCount() << "entries.";
@@ -321,7 +435,10 @@ Config::setConfigurationMap( const QVariantMap& configurationMap )
 
     if ( configurationMap.contains( "items" ) )
     {
-        fillModel( m_model, configurationMap.value( "items" ).toList() );
+        fillModel(
+            m_model,
+            configurationMap.value( "items" ).toList(),
+            Calamares::JobQueue::instance()->globalStorage() );
 
         QString default_item_id = Calamares::getString( configurationMap, "default" );
         if ( !default_item_id.isEmpty() )

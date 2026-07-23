@@ -8,9 +8,11 @@
  */
 
 #include "Config.h"
-
 #include "Branding.h"
+#include "GlobalStorage.h"
+#include "JobQueue.h"
 #include "Settings.h"
+#include "compat/Variant.h"
 #include "network/Manager.h"
 #include "utils/Logger.h"
 #include "utils/System.h"
@@ -33,6 +35,7 @@ private Q_SLOTS:
     void testUrls();
 
     void testBadConfigDoesNotResetUrls();
+    void testGlobalStorageContainsEnvironmentFacts();
 };
 
 WelcomeTests::WelcomeTests() {}
@@ -52,6 +55,10 @@ WelcomeTests::initTestCase()
     if ( !settings )
     {
         (void)new Calamares::Settings( true );
+    }
+    if ( !Calamares::JobQueue::instance() )
+    {
+        (void)new Calamares::JobQueue();
     }
 }
 
@@ -157,6 +164,18 @@ WelcomeTests::testBadConfigDoesNotResetUrls()
         c.setConfigurationMap( map );
     }
     QCOMPARE( nam.getCheckInternetUrls().count(), 1 );
+}
+
+void
+WelcomeTests::testGlobalStorageContainsEnvironmentFacts()
+{
+    const auto* storage = Calamares::JobQueue::instance()->globalStorage();
+    QVERIFY( storage->contains( QStringLiteral( "firmwareType" ) ) );
+    QVERIFY( storage->contains( QStringLiteral( "secureboot.enabled" ) ) );
+    const QString firmware = storage->value( QStringLiteral( "firmwareType" ) ).toString();
+    QVERIFY( firmware == QStringLiteral( "efi" ) || firmware == QStringLiteral( "bios" ) );
+    QCOMPARE( Calamares::typeOf( storage->value( QStringLiteral( "secureboot.enabled" ) ) ),
+              Calamares::BoolVariantType );
 }
 
 QTEST_GUILESS_MAIN( WelcomeTests )
