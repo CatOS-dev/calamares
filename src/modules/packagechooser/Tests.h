@@ -23,6 +23,8 @@ private Q_SLOTS:
     void initTestCase();
     void testBogus();
     void testAppData();
+    void testNetinstallSelectionIsAvailableToContextualProcess();
+    void testNetinstallSelectionReplacesOwnPreviousSelection();
     void testVisibilityEqualityExpression();
     void testVisibilityInequalityExpression();
 };

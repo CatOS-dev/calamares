@@ -152,3 +152,56 @@ PackageChooserTests::testVisibilityInequalityExpression()
     QCOMPARE( config.model()->packageData( 0 ).id, QStringLiteral( "grub" ) );
     QCOMPARE( config.model()->packageData( 1 ).id, QStringLiteral( "uki" ) );
 }
+
+void
+PackageChooserTests::testNetinstallSelectionIsAvailableToContextualProcess()
+{
+    auto* gs = Calamares::JobQueue::instance()->globalStorage();
+    gs->remove( QStringLiteral( "netinstallSelect" ) );
+    gs->remove( QStringLiteral( "packagechooser_desktop" ) );
+
+    Config config;
+    config.setDefaultId( Calamares::ModuleSystem::InstanceKey( QStringLiteral( "packagechooser" ),
+                                                               QStringLiteral( "desktop" ) ) );
+    config.setConfigurationMap(
+        QVariantMap { { QStringLiteral( "method" ), QStringLiteral( "netinstall-select" ) } } );
+    config.updateGlobalStorage( QStringList { QStringLiteral( "Niri-dms" ) } );
+
+    QCOMPARE( gs->value( QStringLiteral( "netinstallSelect" ) ).toStringList(),
+              QStringList { QStringLiteral( "Niri-dms" ) } );
+    QCOMPARE( gs->value( QStringLiteral( "packagechooser_desktop" ) ).toString(),
+              QStringLiteral( "Niri-dms" ) );
+}
+
+void
+PackageChooserTests::testNetinstallSelectionReplacesOwnPreviousSelection()
+{
+    auto* gs = Calamares::JobQueue::instance()->globalStorage();
+    gs->remove( QStringLiteral( "netinstallSelect" ) );
+    gs->remove( QStringLiteral( "packagechooser_desktop" ) );
+    gs->remove( QStringLiteral( "packagechooser_other" ) );
+
+    Config otherConfig;
+    otherConfig.setDefaultId( Calamares::ModuleSystem::InstanceKey( QStringLiteral( "packagechooser" ),
+                                                                    QStringLiteral( "other" ) ) );
+    otherConfig.setConfigurationMap(
+        QVariantMap { { QStringLiteral( "method" ), QStringLiteral( "netinstall-select" ) } } );
+    otherConfig.updateGlobalStorage( QStringList { QStringLiteral( "Other-Selection" ) } );
+
+    Config desktopConfig;
+    desktopConfig.setDefaultId( Calamares::ModuleSystem::InstanceKey( QStringLiteral( "packagechooser" ),
+                                                                      QStringLiteral( "desktop" ) ) );
+    desktopConfig.setConfigurationMap(
+        QVariantMap { { QStringLiteral( "method" ), QStringLiteral( "netinstall-select" ) } } );
+    desktopConfig.updateGlobalStorage( QStringList { QStringLiteral( "KDE-Desktop" ) } );
+
+    desktopConfig.updateGlobalStorage( QStringList { QStringLiteral( "Niri-noctalia" ) } );
+
+    const QStringList expected {
+        QStringLiteral( "Other-Selection" ),
+        QStringLiteral( "Niri-noctalia" ),
+    };
+    QCOMPARE( gs->value( QStringLiteral( "netinstallSelect" ) ).toStringList(), expected );
+    QCOMPARE( gs->value( QStringLiteral( "packagechooser_desktop" ) ).toString(),
+              QStringLiteral( "Niri-noctalia" ) );
+}

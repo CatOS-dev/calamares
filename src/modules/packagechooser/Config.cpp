@@ -169,23 +169,37 @@ Config::updateGlobalStorage( const QStringList& selected ) const
     else if ( m_method == PackageChooserMethod::NetSelect )
     {
         cDebug() << m_defaultId << "groups to select in netinstall" << selected;
-        QStringList newSelected = selected;
         auto* gs = Calamares::JobQueue::instance()->globalStorage();
+        const QString selectionKey = make_gs_key( m_defaultId );
+        const QStringList previousSelection
+            = gs->value( selectionKey ).toString().split( ',', Qt::SkipEmptyParts );
+        QStringList newSelected;
 
-        // If an earlier packagechooser instance added this data to global storage, combine them
+        // Keep selections contributed by other packagechooser instances, but
+        // replace this instance's previous contribution instead of appending
+        // indefinitely each time the user changes the choice.
         if ( gs->contains( "netinstallSelect" ) )
         {
             auto selectedOrig = gs->value( "netinstallSelect" );
             if ( selectedOrig.canConvert< QStringList >() )
             {
-                newSelected += selectedOrig.toStringList();
+                newSelected = selectedOrig.toStringList();
             }
             else
             {
                 cWarning() << "Invalid NetinstallSelect data in global storage.  Earlier selections purged";
             }
-            gs->remove( "netinstallSelect" );
         }
+
+        for ( const QString& previous : previousSelection )
+        {
+            newSelected.removeOne( previous );
+        }
+        newSelected += selected;
+
+        const QString value = selected.join( ',' );
+        gs->insert( selectionKey, value );
+        cDebug() << m_defaultId << "selected" << value;
         gs->insert( "netinstallSelect", newSelected );
     }
     else
