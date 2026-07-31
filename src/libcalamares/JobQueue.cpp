@@ -25,8 +25,10 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QMutex>
+#include <QTextStream>
 #include <QThread>
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <unistd.h>  // for close()
@@ -560,12 +562,48 @@ hostSecureBootEnabled()
     return data.size() >= 5 && data.at( 4 ) != 0;
 }
 
+static bool
+hostSupportsX86_64V3()
+{
+    QFile cpuinfo( QStringLiteral( "/proc/cpuinfo" ) );
+    if ( !cpuinfo.open( QIODevice::ReadOnly ) )
+    {
+        return false;
+    }
+
+    static const QStringList requiredFlags { QStringLiteral( "avx" ),
+                                               QStringLiteral( "avx2" ),
+                                               QStringLiteral( "bmi1" ),
+                                               QStringLiteral( "bmi2" ),
+                                               QStringLiteral( "f16c" ),
+                                               QStringLiteral( "fma" ),
+                                               QStringLiteral( "lzcnt" ),
+                                               QStringLiteral( "movbe" ),
+                                               QStringLiteral( "osxsave" ) };
+    QTextStream stream( &cpuinfo );
+    QString line;
+    while ( stream.readLineInto( &line ) )
+    {
+        if ( !line.startsWith( QStringLiteral( "flags" ) ) )
+        {
+            continue;
+        }
+
+        const QStringList flags = line.section( ':', 1 ).split( ' ', Qt::SkipEmptyParts );
+        return std::all_of( requiredFlags.cbegin(), requiredFlags.cend(), [&]( const QString& flag ) {
+            return flags.contains( flag );
+        } );
+    }
+    return false;
+}
+
 static void
 initializeEnvironmentFacts( GlobalStorage* storage )
 {
     const bool isEfi = QFileInfo::exists( QStringLiteral( "/sys/firmware/efi" ) );
     storage->insert( QStringLiteral( "firmwareType" ), isEfi ? QStringLiteral( "efi" ) : QStringLiteral( "bios" ) );
     storage->insert( QStringLiteral( "secureboot.enabled" ), isEfi && hostSecureBootEnabled() );
+    storage->insert( QStringLiteral( "hostSupportsX86_64V3" ), hostSupportsX86_64V3() );
 }
 
 JobQueue*

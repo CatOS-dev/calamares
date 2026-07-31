@@ -172,9 +172,12 @@ WelcomeTests::testGlobalStorageContainsEnvironmentFacts()
     const auto* storage = Calamares::JobQueue::instance()->globalStorage();
     QVERIFY( storage->contains( QStringLiteral( "firmwareType" ) ) );
     QVERIFY( storage->contains( QStringLiteral( "secureboot.enabled" ) ) );
+    QVERIFY( storage->contains( QStringLiteral( "hostSupportsX86_64V3" ) ) );
     const QString firmware = storage->value( QStringLiteral( "firmwareType" ) ).toString();
     QVERIFY( firmware == QStringLiteral( "efi" ) || firmware == QStringLiteral( "bios" ) );
     QCOMPARE( Calamares::typeOf( storage->value( QStringLiteral( "secureboot.enabled" ) ) ),
+              Calamares::BoolVariantType );
+    QCOMPARE( Calamares::typeOf( storage->value( QStringLiteral( "hostSupportsX86_64V3" ) ) ),
               Calamares::BoolVariantType );
 }
 
