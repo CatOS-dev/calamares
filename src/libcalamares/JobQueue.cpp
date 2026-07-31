@@ -25,10 +25,9 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QMutex>
-#include <QTextStream>
+#include <QProcess>
 #include <QThread>
 
-#include <algorithm>
 #include <memory>
 #include <optional>
 #include <unistd.h>  // for close()
@@ -565,34 +564,23 @@ hostSecureBootEnabled()
 static bool
 hostSupportsX86_64V3()
 {
-    QFile cpuinfo( QStringLiteral( "/proc/cpuinfo" ) );
-    if ( !cpuinfo.open( QIODevice::ReadOnly ) )
+    static const QStringList loaders { QStringLiteral( "/lib/ld-linux-x86-64.so.2" ),
+                                       QStringLiteral( "/lib64/ld-linux-x86-64.so.2" ),
+                                       QStringLiteral( "/usr/lib/ld-linux-x86-64.so.2" ) };
+    for ( const QString& loaderPath : loaders )
     {
-        return false;
-    }
-
-    static const QStringList requiredFlags { QStringLiteral( "avx" ),
-                                               QStringLiteral( "avx2" ),
-                                               QStringLiteral( "bmi1" ),
-                                               QStringLiteral( "bmi2" ),
-                                               QStringLiteral( "f16c" ),
-                                               QStringLiteral( "fma" ),
-                                               QStringLiteral( "lzcnt" ),
-                                               QStringLiteral( "movbe" ),
-                                               QStringLiteral( "osxsave" ) };
-    QTextStream stream( &cpuinfo );
-    QString line;
-    while ( stream.readLineInto( &line ) )
-    {
-        if ( !line.startsWith( QStringLiteral( "flags" ) ) )
+        if ( !QFileInfo::exists( loaderPath ) )
         {
             continue;
         }
 
-        const QStringList flags = line.section( ':', 1 ).split( ' ', Qt::SkipEmptyParts );
-        return std::all_of( requiredFlags.cbegin(), requiredFlags.cend(), [&]( const QString& flag ) {
-            return flags.contains( flag );
-        } );
+        QProcess loader;
+        loader.setProcessChannelMode( QProcess::MergedChannels );
+        loader.start( loaderPath, { QStringLiteral( "--help" ) } );
+        if ( loader.waitForFinished( 1000 ) )
+        {
+            return QString::fromUtf8( loader.readAll() ).contains( QStringLiteral( "x86-64-v3 (supported" ) );
+        }
     }
     return false;
 }
