@@ -50,8 +50,8 @@ BOOST_PYTHON_FUNCTION_OVERLOADS( check_target_env_output_list_overloads,
 BOOST_PYTHON_FUNCTION_OVERLOADS( target_env_process_output_overloads,
                                  CalamaresPython::target_env_process_output,
                                  1,
-                                 4 );
-BOOST_PYTHON_FUNCTION_OVERLOADS( host_env_process_output_overloads, CalamaresPython::host_env_process_output, 1, 4 );
+                                 6 );
+BOOST_PYTHON_FUNCTION_OVERLOADS( host_env_process_output_overloads, CalamaresPython::host_env_process_output, 1, 6 );
 
 QT_WARNING_POP
 
@@ -177,12 +177,14 @@ BOOST_PYTHON_MODULE( libcalamares )
                  "subprocess.CalledProcessError if something went wrong." ) );
     bp::def( "target_env_process_output",
              &CalamaresPython::target_env_process_output,
-             target_env_process_output_overloads( bp::args( "command", "callback", "stdin", "timeout" ),
-                                                  Calamares::Python::docstring_target_env_process_output.data() ) );
+             target_env_process_output_overloads(
+                 bp::args( "command", "callback", "stdin", "timeout", "terminal_frames", "heartbeat_callback" ),
+                 Calamares::Python::docstring_target_env_process_output.data() ) );
     bp::def( "host_env_process_output",
              &CalamaresPython::host_env_process_output,
-             host_env_process_output_overloads( bp::args( "command", "callback", "stdin", "timeout" ),
-                                                Calamares::Python::docstring_host_env_process_output.data() ) );
+             host_env_process_output_overloads(
+                 bp::args( "command", "callback", "stdin", "timeout", "terminal_frames", "heartbeat_callback" ),
+                 Calamares::Python::docstring_host_env_process_output.data() ) );
 
     // .. String functions
     bp::def( "obscure",

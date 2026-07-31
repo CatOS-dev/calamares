@@ -15,7 +15,10 @@
 #include "Settings.h"
 #include "utils/Logger.h"
 
+#include <QElapsedTimer>
 #include <QProcess>
+
+#include <algorithm>
 
 /** @brief Descend from directory, always relative
  *
@@ -154,7 +157,49 @@ Calamares::Utils::Runner::run()
         process.setArguments( m_command );
     }
 
-    if ( m_output )
+    QByteArray terminalFrameBuffer;
+    const auto emitTerminalFrames = [ this, &process, &terminalFrameBuffer ]( bool flush )
+    {
+        terminalFrameBuffer.append( process.readAllStandardOutput() );
+        while ( true )
+        {
+            const qsizetype carriageReturn = terminalFrameBuffer.indexOf( '\r' );
+            const qsizetype newline = terminalFrameBuffer.indexOf( '\n' );
+            qsizetype separator = -1;
+            if ( carriageReturn >= 0 && newline >= 0 )
+            {
+                separator = std::min( carriageReturn, newline );
+            }
+            else
+            {
+                separator = std::max( carriageReturn, newline );
+            }
+            if ( separator < 0 )
+            {
+                break;
+            }
+
+            const QByteArray frame = terminalFrameBuffer.left( separator );
+            qsizetype separatorLength = 1;
+            if ( terminalFrameBuffer.at( separator ) == '\r' && separator + 1 < terminalFrameBuffer.size()
+                 && terminalFrameBuffer.at( separator + 1 ) == '\n' )
+            {
+                separatorLength = 2;
+            }
+            terminalFrameBuffer.remove( 0, separator + separatorLength );
+            if ( !frame.isEmpty() )
+            {
+                Q_EMIT this->output( QString::fromLocal8Bit( frame ) );
+            }
+        }
+        if ( flush && !terminalFrameBuffer.isEmpty() )
+        {
+            Q_EMIT this->output( QString::fromLocal8Bit( terminalFrameBuffer ) );
+            terminalFrameBuffer.clear();
+        }
+    };
+
+    if ( m_outputMode == OutputMode::Lines )
     {
         connect( &process,
                  &QProcess::readyReadStandardOutput,
@@ -169,6 +214,11 @@ Calamares::Utils::Runner::run()
                          }
                      } while ( process.canReadLine() );
                  } );
+    }
+    else if ( m_outputMode == OutputMode::TerminalFrames )
+    {
+        connect(
+            &process, &QProcess::readyReadStandardOutput, [ &emitTerminalFrames ]() { emitTerminalFrames( false ); } );
     }
 
     cDebug() << Logger::SubEntry << "Running" << Logger::RedactedCommand( m_command );
@@ -185,9 +235,46 @@ Calamares::Utils::Runner::run()
     }
     process.closeWriteChannel();
 
-    if ( !process.waitForFinished( m_timeout > std::chrono::seconds::zero()
-                                       ? ( static_cast< int >( std::chrono::milliseconds( m_timeout ).count() ) )
-                                       : -1 ) )
+    bool finished = false;
+    if ( m_heartbeatInterval <= std::chrono::milliseconds::zero() )
+    {
+        finished = process.waitForFinished(
+            m_timeout > std::chrono::milliseconds::zero() ? static_cast< int >( m_timeout.count() ) : -1 );
+    }
+    else
+    {
+        QElapsedTimer elapsed;
+        elapsed.start();
+        const int heartbeatMilliseconds = static_cast< int >( std::max< qint64 >( 1, m_heartbeatInterval.count() ) );
+        while ( process.state() != QProcess::NotRunning )
+        {
+            int waitMilliseconds = heartbeatMilliseconds;
+            if ( m_timeout > std::chrono::milliseconds::zero() )
+            {
+                const qint64 remaining = m_timeout.count() - elapsed.elapsed();
+                if ( remaining <= 0 )
+                {
+                    break;
+                }
+                waitMilliseconds = static_cast< int >( std::min< qint64 >( waitMilliseconds, remaining ) );
+            }
+
+            if ( process.waitForFinished( waitMilliseconds ) )
+            {
+                finished = true;
+                break;
+            }
+            if ( process.state() == QProcess::NotRunning )
+            {
+                finished = true;
+                break;
+            }
+            Q_EMIT heartbeat();
+        }
+        finished = finished || process.state() == QProcess::NotRunning;
+    }
+
+    if ( !finished )
     {
         cWarning() << "Process" << m_command.first() << "timed out after" << m_timeout.count() << "ms."
                    << Logger::NoQuote << "Output so far:\n"
@@ -195,8 +282,10 @@ Calamares::Utils::Runner::run()
         return ProcessResult::Code::TimedOut;
     }
 
-    QString output = m_output ? QString() : QString::fromLocal8Bit( process.readAllStandardOutput() ).trimmed();
-    if ( m_output )
+    QString output = m_outputMode == OutputMode::Disabled
+        ? QString::fromLocal8Bit( process.readAllStandardOutput() ).trimmed()
+        : QString();
+    if ( m_outputMode == OutputMode::Lines )
     {
         // Try to read trailing output, if any
         do
@@ -213,6 +302,10 @@ Calamares::Utils::Runner::run()
             cWarning() << "Some process output left-over";
             Q_EMIT this->output( output );
         }
+    }
+    else if ( m_outputMode == OutputMode::TerminalFrames )
+    {
+        emitTerminalFrames( true );
     }
 
     if ( process.exitStatus() == QProcess::CrashExit )

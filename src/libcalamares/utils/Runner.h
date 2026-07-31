@@ -95,13 +95,27 @@ public:
     }
     Runner& setOutputProcessing( bool enable )
     {
-        m_output = enable;
+        m_outputMode = enable ? OutputMode::Lines : OutputMode::Disabled;
         return *this;
     }
 
     Runner& enableOutputProcessing()
     {
-        m_output = true;
+        m_outputMode = OutputMode::Lines;
+        return *this;
+    }
+
+    /** Emit output whenever either a carriage return or newline completes a terminal frame. */
+    Runner& enableOutputFrameProcessing()
+    {
+        m_outputMode = OutputMode::TerminalFrames;
+        return *this;
+    }
+
+    /** Emit heartbeat() periodically while the child process is still running. */
+    Runner& setHeartbeatInterval( std::chrono::milliseconds interval )
+    {
+        m_heartbeatInterval = interval;
         return *this;
     }
 
@@ -116,8 +130,16 @@ public:
 
 signals:
     void output( QString line );
+    void heartbeat();
 
 private:
+    enum class OutputMode
+    {
+        Disabled,
+        Lines,
+        TerminalFrames
+    };
+
     // What to run, and where.
     QStringList m_command;
     QString m_directory;
@@ -126,7 +148,8 @@ private:
     // Settings for when it actually runs
     QString m_input;
     std::chrono::milliseconds m_timeout { 0 };
-    bool m_output = false;
+    std::chrono::milliseconds m_heartbeatInterval { 0 };
+    OutputMode m_outputMode = OutputMode::Disabled;
 };
 
 }  // namespace Utils

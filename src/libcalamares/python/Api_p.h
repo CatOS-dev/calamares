@@ -26,12 +26,14 @@ namespace Python __attribute__( ( visibility( "hidden" ) ) )
 
     static constexpr std::string_view docstring_target_env_process_output
         = "Runs the specified @p command in the target system. "
-          "Calls @p callback for each line out output of the command. "
+          "Calls @p callback for each output line, or each carriage-return/newline terminal frame when "
+          "@p terminal_frames is true. Calls @p heartbeat_callback periodically while the process is running. "
           "Returns 0 or raises a subprocess.CalledProcessError if something went wrong.";
 
     static constexpr std::string_view docstring_host_env_process_output
         = "Runs the specified command in the host system. "
-          "Calls @p callback for each line out output of the command. "
+          "Calls @p callback for each output line, or each carriage-return/newline terminal frame when "
+          "@p terminal_frames is true. Calls @p heartbeat_callback periodically while the process is running. "
           "Returns 0 or raises a subprocess.CalledProcessError if something went wrong.";
 
 }  // namespace Python

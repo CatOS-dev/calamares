@@ -1356,6 +1356,34 @@ LibCalamaresTests::testRunnerOutput()
         }
     }
 
+    cDebug() << "Testing runner heartbeat";
+    {
+        Calamares::Utils::Runner r(
+            { QStringLiteral( "sh" ), QStringLiteral( "-c" ), QStringLiteral( "sleep 0.35" ) } );
+        QSignalSpy heartbeatSpy( &r, &decltype( r )::heartbeat );
+        r.setHeartbeatInterval( std::chrono::milliseconds( 100 ) );
+
+        const auto result = r.run();
+        QCOMPARE( result.getExitCode(), 0 );
+        QVERIFY( heartbeatSpy.count() >= 2 );
+    }
+
+    cDebug() << "Testing terminal frame output";
+    {
+        QStringList collectedOutput;
+        Calamares::Utils::Runner r(
+            { QStringLiteral( "sh" ), QStringLiteral( "-c" ), QStringLiteral( "printf 'one\rtwo\nthree'" ) } );
+        r.enableOutputFrameProcessing();
+        QObject::connect(
+            &r, &decltype( r )::output, [ &collectedOutput ]( const QString& s ) { collectedOutput << s; } );
+
+        const auto result = r.run();
+        QCOMPARE( result.getExitCode(), 0 );
+        QCOMPARE( result.getOutput(), QString() );
+        QCOMPARE( collectedOutput,
+                  QStringList( { QStringLiteral( "one" ), QStringLiteral( "two" ), QStringLiteral( "three" ) } ) );
+    }
+
     cDebug() << "Testing cat (again)";
     {
         QStringList collectedOutput;

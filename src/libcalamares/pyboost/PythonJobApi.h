@@ -48,12 +48,16 @@ check_target_env_output( const boost::python::list& args, const std::string& inp
 int target_env_process_output( const boost::python::list& args,
                                const boost::python::object& callback = boost::python::object(),
                                const std::string& input = std::string(),
-                               int timeout = 0 );
+                               int timeout = 0,
+                               bool terminalFrames = false,
+                               const boost::python::object& heartbeatCallback = boost::python::object() );
 
 int host_env_process_output( const boost::python::list& args,
                              const boost::python::object& callback = boost::python::object(),
                              const std::string& input = std::string(),
-                             int timeout = 0 );
+                             int timeout = 0,
+                             bool terminalFrames = false,
+                             const boost::python::object& heartbeatCallback = boost::python::object() );
 
 class PythonJobInterface
 {

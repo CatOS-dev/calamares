@@ -124,14 +124,18 @@ populate_utils( py::module_& m )
            py::arg( "command_list" ),
            py::arg( "callback" ) = pybind11::none(),
            py::arg( "input" ) = std::string(),
-           py::arg( "timeout" ) = 0 );
+           py::arg( "timeout" ) = 0,
+           py::arg( "terminal_frames" ) = false,
+           py::arg( "heartbeat_callback" ) = pybind11::none() );
     m.def( "host_env_process_output",
            &Calamares::Python::host_env_process_output,
            Calamares::Python::docstring_host_env_process_output.data(),
            py::arg( "command_list" ),
            py::arg( "callback" ) = pybind11::none(),
            py::arg( "input" ) = std::string(),
-           py::arg( "timeout" ) = 0 );
+           py::arg( "timeout" ) = 0,
+           py::arg( "terminal_frames" ) = false,
+           py::arg( "heartbeat_callback" ) = pybind11::none() );
 
     m.def( "gettext_languages",
            &Calamares::Python::gettext_languages,

@@ -131,7 +131,9 @@ process_output( Calamares::Utils::RunLocation location,
                 const QStringList& args,
                 const Calamares::Python::Object& callback,
                 const std::string& input,
-                int timeout )
+                int timeout,
+                bool terminalFrames,
+                const Calamares::Python::Object& heartbeatCallback )
 {
     Calamares::Utils::Runner r( args );
     r.setLocation( location );
@@ -149,7 +151,19 @@ process_output( Calamares::Utils::RunLocation location,
             QObject::connect(
                 &r, &decltype( r )::output, [ &callback ]( const QString& s ) { callback( s.toStdString() ); } );
         }
-        r.enableOutputProcessing();
+        if ( terminalFrames )
+        {
+            r.enableOutputFrameProcessing();
+        }
+        else
+        {
+            r.enableOutputProcessing();
+        }
+    }
+    if ( !heartbeatCallback.is_none() )
+    {
+        QObject::connect( &r, &decltype( r )::heartbeat, [ &heartbeatCallback ]() { heartbeatCallback(); } );
+        r.setHeartbeatInterval( std::chrono::milliseconds( 500 ) );
     }
     if ( !input.empty() )
     {
@@ -217,17 +231,37 @@ check_target_env_output( const List& args, const std::string& input, int timeout
 }
 
 int
-target_env_process_output( const List& args, const Object& callback, const std::string& input, int timeout )
+target_env_process_output( const List& args,
+                           const Object& callback,
+                           const std::string& input,
+                           int timeout,
+                           bool terminalFrames,
+                           const Object& heartbeatCallback )
 {
-    return process_output(
-        Calamares::System::RunLocation::RunInTarget, stringListFromPyList( args ), callback, input, timeout );
+    return process_output( Calamares::System::RunLocation::RunInTarget,
+                           stringListFromPyList( args ),
+                           callback,
+                           input,
+                           timeout,
+                           terminalFrames,
+                           heartbeatCallback );
 }
 
 int
-host_env_process_output( const List& args, const Object& callback, const std::string& input, int timeout )
+host_env_process_output( const List& args,
+                         const Object& callback,
+                         const std::string& input,
+                         int timeout,
+                         bool terminalFrames,
+                         const Object& heartbeatCallback )
 {
-    return process_output(
-        Calamares::System::RunLocation::RunInHost, stringListFromPyList( args ), callback, input, timeout );
+    return process_output( Calamares::System::RunLocation::RunInHost,
+                           stringListFromPyList( args ),
+                           callback,
+                           input,
+                           timeout,
+                           terminalFrames,
+                           heartbeatCallback );
 }
 
 JobProxy::JobProxy( Calamares::Python::Job* parent )

@@ -148,7 +148,9 @@ _process_output( Calamares::Utils::RunLocation location,
                  const boost::python::list& args,
                  const boost::python::object& callback,
                  const std::string& input,
-                 int timeout )
+                 int timeout,
+                 bool terminalFrames,
+                 const boost::python::object& heartbeatCallback )
 {
     Calamares::Utils::Runner r( bp_list_to_qstringlist( args ) );
     r.setLocation( location );
@@ -166,7 +168,19 @@ _process_output( Calamares::Utils::RunLocation location,
             QObject::connect(
                 &r, &decltype( r )::output, [ &callback ]( const QString& s ) { callback( s.toStdString() ); } );
         }
-        r.enableOutputProcessing();
+        if ( terminalFrames )
+        {
+            r.enableOutputFrameProcessing();
+        }
+        else
+        {
+            r.enableOutputProcessing();
+        }
+    }
+    if ( !heartbeatCallback.is_none() )
+    {
+        QObject::connect( &r, &decltype( r )::heartbeat, [ &heartbeatCallback ]() { heartbeatCallback(); } );
+        r.setHeartbeatInterval( std::chrono::milliseconds( 500 ) );
     }
     if ( !input.empty() )
     {
@@ -190,18 +204,24 @@ int
 target_env_process_output( const boost::python::list& args,
                            const boost::python::object& callback,
                            const std::string& input,
-                           int timeout )
+                           int timeout,
+                           bool terminalFrames,
+                           const boost::python::object& heartbeatCallback )
 {
-    return _process_output( Calamares::Utils::RunLocation::RunInTarget, args, callback, input, timeout );
+    return _process_output(
+        Calamares::Utils::RunLocation::RunInTarget, args, callback, input, timeout, terminalFrames, heartbeatCallback );
 }
 
 int
 host_env_process_output( const boost::python::list& args,
                          const boost::python::object& callback,
                          const std::string& input,
-                         int timeout )
+                         int timeout,
+                         bool terminalFrames,
+                         const boost::python::object& heartbeatCallback )
 {
-    return _process_output( Calamares::Utils::RunLocation::RunInHost, args, callback, input, timeout );
+    return _process_output(
+        Calamares::Utils::RunLocation::RunInHost, args, callback, input, timeout, terminalFrames, heartbeatCallback );
 }
 
 }  // namespace CalamaresPython

@@ -38,8 +38,18 @@ namespace Python __attribute__( ( visibility( "hidden" ) ) )
     /// @deprecated Prefer target_env_process_output(args,string_variable,input,timeout)
     std::string check_target_env_output( const List& args, const std::string& input, int timeout );
 
-    int target_env_process_output( const List& args, const Object& callback, const std::string& input, int timeout );
-    int host_env_process_output( const List& args, const Object& callback, const std::string& input, int timeout );
+    int target_env_process_output( const List& args,
+                                   const Object& callback,
+                                   const std::string& input,
+                                   int timeout,
+                                   bool terminalFrames,
+                                   const Object& heartbeatCallback );
+    int host_env_process_output( const List& args,
+                                 const Object& callback,
+                                 const std::string& input,
+                                 int timeout,
+                                 bool terminalFrames,
+                                 const Object& heartbeatCallback );
 
     class Job;
 
