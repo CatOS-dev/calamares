@@ -400,3 +400,185 @@ msgstr "目标系统中的 \"{}\" 不是一个目录"
 #: src/modules/zfshostid/main.py:27
 msgid "Copying zfs generated hostid."
 msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/bootloadu/main.py:33
+msgid "Prepare the boot environment"
+msgstr "准备引导环境"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/bootloadu/main.py:91
+#: ../catos-calamares-config/usr/lib/calamares/modules/bootloadu/main.py:102
+msgid "Boot setup failed"
+msgstr "引导环境配置失败"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/chwd/main.py:34
+msgid "Installing needed drivers for CatOS..."
+msgstr "正在为 CatOS 安装所需驱动程序…"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/chwd/main.py:68
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:385
+msgid "No mount point for root partition in globalstorage"
+msgstr "未在全局存储中找到根分区挂载点"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/chwd/main.py:69
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:386
+msgid "globalstorage does not contain a \"rootMountPoint\" key, doing nothing"
+msgstr "globalstorage 中没有“rootMountPoint”键，无法继续"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/chwd/main.py:72
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:394
+msgid "Bad mount point for root partition in globalstorage"
+msgstr "全局存储中的根分区挂载点无效"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/chwd/main.py:73
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:395
+#, python-brace-format
+msgid ""
+"globalstorage[\"rootMountPoint\"] is \"{root}\", which does not exist, doing "
+"nothing"
+msgstr "globalstorage[\"rootMountPoint\"] 指向“{root}”，但该路径不存在，无法继续"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:405
+msgid "No configuration found"
+msgstr "未找到配置"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:406
+msgid "Aborting due to missing configuration"
+msgstr "由于缺少配置，操作已中止"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:414
+msgid "Package List Missing"
+msgstr "缺少软件包列表"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:415
+msgid "Cannot continue without list of packages to install"
+msgstr "没有待安装的软件包列表，无法继续"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:424
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:433
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:661
+msgid "Bad configuration"
+msgstr "配置无效"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:425
+msgid "basePackages must be a list"
+msgstr "basePackages 必须是列表"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:434
+msgid "requiredPackages must be a list"
+msgstr "requiredPackages 必须是列表"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:448
+msgid "Invalid repository selection"
+msgstr "仓库选择无效"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:449
+#, python-brace-format
+msgid "Unsupported repository selection: {repository}"
+msgstr "不支持的仓库选择：{repository}"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:457
+msgid "Repository configuration missing"
+msgstr "缺少仓库配置"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:458
+#, python-brace-format
+msgid "Required pacman configuration does not exist: {path}"
+msgstr "所需的 pacman 配置不存在：{path}"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:492
+msgid "Invalid boot configuration"
+msgstr "引导配置无效"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:493
+#, python-brace-format
+msgid "Bootloader package plan is invalid: {error}"
+msgstr "引导器软件包计划无效：{error}"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:517
+msgid "Could not refresh repository databases for base system installation"
+msgstr "无法为基础系统安装刷新仓库数据库"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:529
+#, python-brace-format
+msgid "Missing required packages: {packages}"
+msgstr "缺少必需软件包：{packages}"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:533
+msgid "Required installation packages are unavailable"
+msgstr "安装所需的软件包不可用"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:547
+msgid "Could not query repository metadata for base system install"
+msgstr "无法查询基础系统安装所需的仓库元数据"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:555
+msgid "pkgcheck failed while preparing base system package list"
+msgstr "准备基础系统软件包列表时 pkgcheck 失败"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:618
+#, python-brace-format
+msgid ""
+"{error}\n"
+"Last pacstrap output:\n"
+"{output}"
+msgstr "{error}\nPacstrap 最近输出：\n{output}"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:622
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:629
+msgid "Failed to run pacstrap"
+msgstr "运行 pacstrap 失败"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:630
+#, python-brace-format
+msgid "pacstrap failed: {error}"
+msgstr "pacstrap 失败：{error}"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:641
+msgid "Failed to install repository configuration"
+msgstr "安装仓库配置失败"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:642
+#, python-brace-format
+msgid "Could not copy pacman configuration into target: {error}"
+msgstr "无法将 pacman 配置复制到目标系统：{error}"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:662
+#, python-brace-format
+msgid "{key} must be a list of file paths"
+msgstr "{key} 必须是文件路径列表"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:687
+#, python-brace-format
+msgid "Installer file is missing: {path}"
+msgstr "安装器文件缺失：{path}"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:690
+msgid "Required installer file missing"
+msgstr "缺少必需的安装器文件"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:701
+msgid "Required installer helper is not executable"
+msgstr "必需的安装器辅助程序不可执行"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:702
+#, python-brace-format
+msgid "Installer helper is not executable: {path}"
+msgstr "安装器辅助程序不可执行：{path}"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:714
+#, python-brace-format
+msgid "Failed to copy installer file {path}: {error}"
+msgstr "复制安装器文件 {path} 失败：{error}"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:719
+msgid "Failed to copy required installer file"
+msgstr "复制必需的安装器文件失败"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:731
+msgid "Required installer helper lost executable permissions"
+msgstr "必需的安装器辅助程序丢失了可执行权限"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:732
+#, python-brace-format
+msgid "Copied installer helper is not executable: {path}"
+msgstr "复制后的安装器辅助程序不可执行：{path}"

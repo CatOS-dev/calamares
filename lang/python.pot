@@ -392,3 +392,185 @@ msgstr ""
 #: src/modules/zfshostid/main.py:27
 msgid "Copying zfs generated hostid."
 msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/bootloadu/main.py:33
+msgid "Prepare the boot environment"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/bootloadu/main.py:91
+#: ../catos-calamares-config/usr/lib/calamares/modules/bootloadu/main.py:102
+msgid "Boot setup failed"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/chwd/main.py:34
+msgid "Installing needed drivers for CatOS..."
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/chwd/main.py:68
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:385
+msgid "No mount point for root partition in globalstorage"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/chwd/main.py:69
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:386
+msgid "globalstorage does not contain a \"rootMountPoint\" key, doing nothing"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/chwd/main.py:72
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:394
+msgid "Bad mount point for root partition in globalstorage"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/chwd/main.py:73
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:395
+#, python-brace-format
+msgid ""
+"globalstorage[\"rootMountPoint\"] is \"{root}\", which does not exist, doing "
+"nothing"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:405
+msgid "No configuration found"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:406
+msgid "Aborting due to missing configuration"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:414
+msgid "Package List Missing"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:415
+msgid "Cannot continue without list of packages to install"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:424
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:433
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:661
+msgid "Bad configuration"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:425
+msgid "basePackages must be a list"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:434
+msgid "requiredPackages must be a list"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:448
+msgid "Invalid repository selection"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:449
+#, python-brace-format
+msgid "Unsupported repository selection: {repository}"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:457
+msgid "Repository configuration missing"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:458
+#, python-brace-format
+msgid "Required pacman configuration does not exist: {path}"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:492
+msgid "Invalid boot configuration"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:493
+#, python-brace-format
+msgid "Bootloader package plan is invalid: {error}"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:517
+msgid "Could not refresh repository databases for base system installation"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:529
+#, python-brace-format
+msgid "Missing required packages: {packages}"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:533
+msgid "Required installation packages are unavailable"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:547
+msgid "Could not query repository metadata for base system install"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:555
+msgid "pkgcheck failed while preparing base system package list"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:618
+#, python-brace-format
+msgid ""
+"{error}\n"
+"Last pacstrap output:\n"
+"{output}"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:622
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:629
+msgid "Failed to run pacstrap"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:630
+#, python-brace-format
+msgid "pacstrap failed: {error}"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:641
+msgid "Failed to install repository configuration"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:642
+#, python-brace-format
+msgid "Could not copy pacman configuration into target: {error}"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:662
+#, python-brace-format
+msgid "{key} must be a list of file paths"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:687
+#, python-brace-format
+msgid "Installer file is missing: {path}"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:690
+msgid "Required installer file missing"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:701
+msgid "Required installer helper is not executable"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:702
+#, python-brace-format
+msgid "Installer helper is not executable: {path}"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:714
+#, python-brace-format
+msgid "Failed to copy installer file {path}: {error}"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:719
+msgid "Failed to copy required installer file"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:731
+msgid "Required installer helper lost executable permissions"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:732
+#, python-brace-format
+msgid "Copied installer helper is not executable: {path}"
+msgstr ""
