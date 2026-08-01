@@ -79,6 +79,8 @@ signals:
      * just the name of the job, but some jobs include more information.
      */
     void progress( qreal percent, const QString& prettyName );
+    /** @brief Report progress of the currently running job without queue weighting. */
+    void currentJobProgress( qreal percent, const QString& prettyName );
     /** @brief Indicate that the queue is empty, after calling start()
      *
      * Emitted when the queue empties. The queue may also emit
