@@ -74,7 +74,7 @@ if(BUILD_TESTING)
             pybinddynamicstatustest
             PROPERTIES
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                PASS_REGULAR_EXPRESSION "Current job progress.*12.5 MiB/s"
+                PASS_REGULAR_EXPRESSION "Installation progress.*12.5 MiB/s"
         )
     endif()
 endif()

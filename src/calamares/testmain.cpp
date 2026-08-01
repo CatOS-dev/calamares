@@ -571,9 +571,9 @@ main( int argc, char* argv[] )
     Calamares::JobQueue::instance()->enqueue( 100, module_p->jobs() );
 
     QObject::connect( Calamares::JobQueue::instance(),
-                      &Calamares::JobQueue::currentJobProgress,
+                      &Calamares::JobQueue::progress,
                       []( qreal percent, const QString& message )
-                      { cDebug() << "Current job progress" << percent << message; } );
+                      { cDebug() << "Installation progress" << percent << message; } );
     QObject::connect( Calamares::JobQueue::instance(),
                       &Calamares::JobQueue::finished,
                       [ application ]()

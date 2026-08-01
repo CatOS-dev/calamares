@@ -603,7 +603,6 @@ TestLibCalamares::testJobQueue()
                    Calamares::JobList() << Calamares::job_ptr( new DummyJob( this ) )
                                         << Calamares::job_ptr( new DummyJob( this ) ) );
         QSignalSpy spy_progress( &q, &Calamares::JobQueue::progress );
-        QSignalSpy spy_current_job_progress( &q, &Calamares::JobQueue::currentJobProgress );
         QSignalSpy spy_finished( &q, &Calamares::JobQueue::finished );
         QSignalSpy spy_failed( &q, &Calamares::JobQueue::failed );
 
@@ -625,17 +624,6 @@ TestLibCalamares::testJobQueue()
         // 4 more for the next job
         // 100% by the queue at queue end
         QCOMPARE( spy_progress.count(), 13 );
-        QCOMPARE( spy_current_job_progress.count(), 13 );
-        const QList< qreal > expectedCurrentProgress {
-            0.0, 0.5, 0.75, 1.0,
-            0.0, 0.5, 0.75, 1.0,
-            0.0, 0.5, 0.75, 1.0,
-            1.0,
-        };
-        for ( qsizetype index = 0; index < expectedCurrentProgress.count(); ++index )
-        {
-            QCOMPARE( spy_current_job_progress.at( index ).first().toReal(), expectedCurrentProgress.at( index ) );
-        }
 
         /* Consider how progress will be reported:
          *

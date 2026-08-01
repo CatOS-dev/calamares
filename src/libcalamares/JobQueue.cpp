@@ -521,11 +521,6 @@ private:
             progress = 1.0;
             message = tr( "Done" );
         }
-        QMetaObject::invokeMethod( m_queue,
-                                   "currentJobProgress",
-                                   Qt::QueuedConnection,
-                                   Q_ARG( qreal, percentage ),
-                                   Q_ARG( QString, message ) );
         QMetaObject::invokeMethod(
             m_queue, "progress", Qt::QueuedConnection, Q_ARG( qreal, progress ), Q_ARG( QString, message ) );
     }

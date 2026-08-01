@@ -108,7 +108,7 @@ ExecutionViewStep::ExecutionViewStep( QObject* parent )
     barLayout->addWidget( m_progressBar );
     barLayout->addWidget( toolBar );
 
-    connect( JobQueue::instance(), &JobQueue::currentJobProgress, this, &ExecutionViewStep::updateFromJobQueue );
+    connect( JobQueue::instance(), &JobQueue::progress, this, &ExecutionViewStep::updateFromJobQueue );
 }
 
 QString
