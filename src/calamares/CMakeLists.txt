@@ -64,4 +64,17 @@ if(BUILD_TESTING)
 
     add_executable(test_conf test_conf.cpp)
     target_link_libraries(test_conf PUBLIC yamlcpp::yamlcpp ${qtname}::Core)
+
+    if(WITH_PYTHON AND WITH_PYBIND11)
+        add_test(
+            NAME pybinddynamicstatustest
+            COMMAND loadmodule -P dynamicstatus
+        )
+        set_tests_properties(
+            pybinddynamicstatustest
+            PROPERTIES
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                PASS_REGULAR_EXPRESSION "Current job progress.*12.5 MiB/s"
+        )
+    endif()
 endif()

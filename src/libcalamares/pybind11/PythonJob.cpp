@@ -19,6 +19,7 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QScopeGuard>
 #include <QString>
 
 #ifdef WITH_PYBIND11
@@ -203,6 +204,7 @@ struct Job::Private
     QVariantMap configurationMap;  // The module configuration
 
     QString description;  // Obtained from the Python code
+    const py::object* prettyStatusMessage = nullptr;  // Valid only while exec() owns the interpreter scope
 };
 
 Job::Job( const QString& scriptFile,
@@ -338,7 +340,20 @@ Job::exec()
     auto scope = py::module_::import( "__main__" ).attr( "__dict__" );
     m_d->description = getPrettyNameFromScope( scope );
 
-    Q_EMIT progress( 0 );
+    py::object prettyStatusMessage = py::none();
+    static constexpr char key_pretty_status_message[] = "pretty_status_message";
+    if ( scope.contains( key_pretty_status_message ) )
+    {
+        py::object candidate = scope[ key_pretty_status_message ];
+        if ( PyCallable_Check( candidate.ptr() ) )
+        {
+            prettyStatusMessage = std::move( candidate );
+            m_d->prettyStatusMessage = &prettyStatusMessage;
+        }
+    }
+    const auto clearPrettyStatusMessage = qScopeGuard( [ this ] { m_d->prettyStatusMessage = nullptr; } );
+
+    emitProgress( 0 );
     static constexpr char key_run[] = "run";
     if ( scope.contains( key_run ) )
     {
@@ -408,7 +423,26 @@ Job::configuration() const
 void
 Job::emitProgress( double progressValue )
 {
-    // TODO: update prettyname
+    if ( m_d->prettyStatusMessage )
+    {
+        try
+        {
+            const py::object result = ( *m_d->prettyStatusMessage )();
+            if ( !result.is_none() )
+            {
+                const QString status = asQString( result ).trimmed();
+                if ( !status.isEmpty() )
+                {
+                    m_d->description = status;
+                }
+            }
+        }
+        catch ( py::error_already_set& error )
+        {
+            cWarning() << "Could not update Python job status message:" << error.what();
+            error.discard_as_unraisable( "pretty_status_message" );
+        }
+    }
     emit progress( progressValue );
 }
 
