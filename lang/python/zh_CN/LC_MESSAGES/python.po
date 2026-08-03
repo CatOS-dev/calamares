@@ -582,3 +582,36 @@ msgstr "必需的安装器辅助程序丢失了可执行权限"
 #, python-brace-format
 msgid "Copied installer helper is not executable: {path}"
 msgstr "复制后的安装器辅助程序不可执行：{path}"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py:385
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:286
+msgid "Downloading packages"
+msgstr "正在下载软件包"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py:402
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:327
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:339
+msgid "Refreshing repository databases"
+msgstr "正在刷新软件仓库数据库"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py:447
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:563
+msgid "Preparing package downloads"
+msgstr "正在准备下载软件包"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py:464
+msgid "Applying package changes"
+msgstr "正在应用软件包变更"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py:470
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:578
+msgid "Checking package changes"
+msgstr "正在检查软件包变更"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:570
+msgid "Download plan"
+msgstr "下载计划"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:574
+msgid "Installing cached packages"
+msgstr "正在安装已缓存的软件包"

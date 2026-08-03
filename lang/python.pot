@@ -574,3 +574,36 @@ msgstr ""
 #, python-brace-format
 msgid "Copied installer helper is not executable: {path}"
 msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py:385
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:286
+msgid "Downloading packages"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py:402
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:327
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:339
+msgid "Refreshing repository databases"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py:447
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:563
+msgid "Preparing package downloads"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py:464
+msgid "Applying package changes"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py:470
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:578
+msgid "Checking package changes"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:570
+msgid "Download plan"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:574
+msgid "Installing cached packages"
+msgstr ""

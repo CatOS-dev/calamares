@@ -440,7 +440,15 @@ public:
                          << ')';
                 o.refresh();  // So next time it shows the function header again
                 emitProgress( 0.0 );  // 0% for *this job*
-                connect( jobitem.job.data(), &Job::progress, this, &JobThread::emitProgress );
+                // Jobs execute in this worker thread even though their QObject affinity
+                // remains with the main thread. Process progress synchronously here so
+                // prettyStatusMessage() and all queue state are read on the execution
+                // thread; only the copied progress snapshot is queued to the UI thread.
+                connect( jobitem.job.data(),
+                         &Job::progress,
+                         this,
+                         &JobThread::emitProgress,
+                         Qt::DirectConnection );
                 auto result = jobitem.job->exec();
                 if ( !failureEncountered && !result )
                 {

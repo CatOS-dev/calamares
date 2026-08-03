@@ -19,7 +19,10 @@
 
 #include <QObject>
 #include <QSignalSpy>
+#include <QThread>
 #include <QtTest/QtTest>
+
+#include <atomic>
 
 class TestLibCalamares : public QObject
 {
@@ -513,14 +516,24 @@ Q_STATIC_ASSERT( std::chrono::seconds( MAX_TEST_SLEEP ) < MAX_TEST_DURATION );
 class DummyJob : public Calamares::Job
 {
 public:
-    DummyJob( QObject* parent )
+    explicit DummyJob( QObject* parent = nullptr )
         : Calamares::Job( parent )
     {
     }
     ~DummyJob() override;
 
     QString prettyName() const override;
+    QString prettyStatusMessage() const override;
     Calamares::JobResult exec() override;
+
+    bool statusReadOnExecutionThread() const
+    {
+        return m_statusReadOnExecutionThread.load( std::memory_order_acquire );
+    }
+
+private:
+    std::atomic< QThread* > m_executionThread { nullptr };
+    mutable std::atomic_bool m_statusReadOnExecutionThread { true };
 };
 
 DummyJob::~DummyJob() {}
@@ -531,9 +544,21 @@ DummyJob::prettyName() const
     return QString( "DummyJob" );
 }
 
+QString
+DummyJob::prettyStatusMessage() const
+{
+    const QThread* executionThread = m_executionThread.load( std::memory_order_acquire );
+    if ( executionThread && QThread::currentThread() != executionThread )
+    {
+        m_statusReadOnExecutionThread.store( false, std::memory_order_release );
+    }
+    return QString( "Running DummyJob" );
+}
+
 Calamares::JobResult
 DummyJob::exec()
 {
+    m_executionThread.store( QThread::currentThread(), std::memory_order_release );
     cDebug() << "Starting DummyJob";
     progress( 0.5 );
     QThread::sleep( MAX_TEST_SLEEP );
@@ -572,7 +597,8 @@ TestLibCalamares::testJobQueue()
         Calamares::JobQueue q;
         QVERIFY( !q.isRunning() );
 
-        q.enqueue( 8, Calamares::JobList() << Calamares::job_ptr( new DummyJob( this ) ) );
+        auto job = Calamares::job_ptr( new DummyJob );
+        q.enqueue( 8, Calamares::JobList() << job );
         QSignalSpy spy_progress( &q, &Calamares::JobQueue::progress );
         QSignalSpy spy_finished( &q, &Calamares::JobQueue::finished );
         QSignalSpy spy_failed( &q, &Calamares::JobQueue::failed );
@@ -586,6 +612,7 @@ TestLibCalamares::testJobQueue()
         QVERIFY( !q.isRunning() );
         QCOMPARE( spy_finished.count(), 1 );
         QCOMPARE( spy_failed.count(), 0 );
+        QVERIFY( static_cast< DummyJob* >( job.data() )->statusReadOnExecutionThread() );
         // 0% by the queue at job start
         // 50% by the job itself
         // 90% by the job itself
