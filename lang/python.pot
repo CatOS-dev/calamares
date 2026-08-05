@@ -580,6 +580,18 @@ msgstr ""
 msgid "Downloading packages"
 msgstr ""
 
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py
+#, python-format
+msgid "Downloading %(packages)s"
+msgstr ""
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py
+#, python-format
+msgid "Downloading %(packages)s and %(count)d more packages"
+msgstr ""
+
 #: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py:402
 #: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:327
 #: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:339

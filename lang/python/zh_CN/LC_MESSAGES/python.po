@@ -588,6 +588,18 @@ msgstr "复制后的安装器辅助程序不可执行：{path}"
 msgid "Downloading packages"
 msgstr "正在下载软件包"
 
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py
+#, python-format
+msgid "Downloading %(packages)s"
+msgstr "正在下载 %(packages)s"
+
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py
+#: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py
+#, python-format
+msgid "Downloading %(packages)s and %(count)d more packages"
+msgstr "正在下载 %(packages)s，另有 %(count)d 个软件包"
+
 #: ../catos-calamares-config/usr/lib/calamares/modules/pacman/main.py:402
 #: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:327
 #: ../catos-calamares-config/usr/lib/calamares/modules/pacstrap/main.py:339
