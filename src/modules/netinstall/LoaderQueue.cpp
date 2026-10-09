@@ -130,7 +130,7 @@ LoaderQueue::fetch( const QUrl& url )
     cDebug() << "NetInstall loading groups from" << url;
     QNetworkReply* reply = Manager().asynchronousGet(
         url,
-        RequestOptions( RequestOptions::FakeUserAgent | RequestOptions::FollowRedirect, std::chrono::seconds( 30 ) ) );
+        RequestOptions( RequestOptions::FakeUserAgent | RequestOptions::FollowRedirect, std::chrono::seconds( 10 ) ) );
 
     if ( !reply )
     {
