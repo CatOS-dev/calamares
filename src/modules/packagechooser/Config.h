@@ -12,6 +12,7 @@
 #define PACKAGECHOOSER_CONFIG_H
 
 #include "PackageModel.h"
+#include "Job.h"
 
 #include "modulesystem/Config.h"
 #include "modulesystem/InstanceKey.h"
@@ -98,6 +99,8 @@ public:
     QString packageChoice() const { return m_packageChoice.value_or( QString() ); }
     void setPackageChoice( const QString& packageChoice );
 
+    Calamares::JobList hookJobs() const;
+
     QString prettyName() const;
     QString prettyStatus() const;
 
@@ -106,6 +109,9 @@ signals:
     void prettyStatusChanged();
 
 private:
+    mutable QStringList m_selected;
+    bool m_hookDontChroot = true;
+    int m_hookTimeout = 30;
     PackageListModel* m_model = nullptr;
     QModelIndex m_defaultModelIndex;
 

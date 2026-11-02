@@ -9,6 +9,7 @@
  */
 
 #include "Config.h"
+#include "PackageChooserHookJob.h"
 
 #ifdef HAVE_APPDATA
 #include "ItemAppData.h"
@@ -130,6 +131,7 @@ make_gs_key( const Calamares::ModuleSystem::InstanceKey& key )
 void
 Config::updateGlobalStorage( const QStringList& selected ) const
 {
+    m_selected = selected;
     if ( m_packageChoice.has_value() )
     {
         cWarning() << "Inconsistent package choices -- both model and single-selection QML";
@@ -437,6 +439,8 @@ fillModel( PackageListModel* model, const QVariantList& items, const Calamares::
 void
 Config::setConfigurationMap( const QVariantMap& configurationMap )
 {
+    m_hookDontChroot = Calamares::getBool( configurationMap, "dontChroot", true );
+    m_hookTimeout = Calamares::getInteger( configurationMap, "timeout", 30 );
     m_mode = packageChooserModeNames().find( Calamares::getString( configurationMap, "mode" ),
                                              PackageChooserMode::Required );
     m_method = PackageChooserMethodNames().find( Calamares::getString( configurationMap, "method" ),
@@ -488,4 +492,20 @@ Config::setConfigurationMap( const QVariantMap& configurationMap )
             m_stepName = new Calamares::Locale::TranslatedString( labels, "step" );
         }
     }
+}
+
+Calamares::JobList
+Config::hookJobs() const
+{
+    const QStringList selected = m_packageChoice.has_value() ? QStringList { m_packageChoice.value() } : m_selected;
+    Calamares::JobList jobs;
+    for ( int i = 0; i < m_model->packageCount(); ++i )
+    {
+        const auto& item = m_model->packageData( i );
+        if ( selected.contains( item.id ) && item.hook.isValid() )
+        {
+            jobs.append( Calamares::job_ptr( new PackageChooserHookJob( item.hook, !m_hookDontChroot, m_hookTimeout ) ) );
+        }
+    }
+    return jobs;
 }

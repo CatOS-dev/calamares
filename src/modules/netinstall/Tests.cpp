@@ -43,6 +43,7 @@ private Q_SLOTS:
     void testGroup();
     void testCompare();
     void testModel();
+    void testHiddenSelectionRevisit();
     void testExampleFiles();
 
     void testUrlFallback_data();
@@ -304,6 +305,54 @@ ItemTests::testModel()
 
     // But m2 has "expanded" set which the others do no
     QVERIFY( *( m2.m_rootItem->child( 0 ) ) != *group );
+}
+
+void
+ItemTests::testHiddenSelectionRevisit()
+{
+    PackageModel model;
+    model.setupModelData( Calamares::YAML::sequenceToVariant( YAML::Load( R"(
+- name: desktops
+  selected: false
+  subgroups:
+    - name: visible
+      selected: false
+      packages: [visible-package]
+    - name: hidden-a
+      hidden: true
+      selected: false
+      packages: [package-a]
+    - name: hidden-b
+      hidden: true
+      selected: false
+      packages: [package-b]
+- name: independent
+  selected: true
+  packages: [independent-package]
+)" ) ) );
+    auto packages = [ &model ]()
+    {
+        QStringList names;
+        for ( auto* item : model.getPackages() )
+        {
+            names.append( item->packageName() );
+        }
+        names.sort();
+        return names;
+    };
+    QCOMPARE( model.rowCount(), 2 );
+    QCOMPARE( model.rowCount( model.index( 0, 0 ) ), 1 );
+    model.setSelections( { "hidden-a", "independent" } );
+    QCOMPARE( packages(), ( QStringList { "independent-package", "package-a" } ) );
+    model.setSelections( { "hidden-a", "independent" } );
+    QCOMPARE( packages(), ( QStringList { "independent-package", "package-a" } ) );
+    model.setSelections( { "hidden-b", "independent" } );
+    QCOMPARE( packages(), ( QStringList { "independent-package", "package-b" } ) );
+    model.setSelections( { "independent" } );
+    QCOMPARE( packages(), QStringList { "independent-package" } );
+    model.setData( model.index( 0, 0 ), Qt::Checked, Qt::CheckStateRole );
+    model.setSelections( {} );
+    QCOMPARE( packages(), QStringList { "visible-package" } );
 }
 
 void

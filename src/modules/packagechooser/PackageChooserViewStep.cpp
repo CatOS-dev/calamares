@@ -127,8 +127,7 @@ PackageChooserViewStep::onLeave()
 Calamares::JobList
 PackageChooserViewStep::jobs() const
 {
-    Calamares::JobList l;
-    return l;
+    return m_config->hookJobs();
 }
 
 void

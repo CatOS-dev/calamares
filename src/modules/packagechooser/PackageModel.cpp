@@ -69,6 +69,7 @@ PackageItem::PackageItem( const QVariantMap& item_map )
     , packageNames( Calamares::getStringList( item_map, "packages" ) )
     , netinstallData( getSubMap( item_map, "netinstall" ) )
     , visibleWhen( Calamares::getStringList( item_map, "visibleWhen" ) )
+    , hook( item_map.value( "hook" ) )
 {
     if ( name.isEmpty() && id.isEmpty() )
     {

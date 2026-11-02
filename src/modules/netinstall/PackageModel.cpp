@@ -15,18 +15,24 @@
 #include "utils/Variant.h"
 #include "utils/Yaml.h"
 
-/// Recursive helper for setSelections()
+/// Replace only the selection contributed by PackageChooser.
 static void
-setSelections( const QStringList& selectNames, PackageTreeItem* item )
+setSelections( const QStringList& selected, const QStringList& previous, PackageTreeItem* item )
 {
-    for ( int i = 0; i < item->childCount(); i++ )
+    if ( item->isGroup() )
     {
-        auto* child = item->child( i );
-        setSelections( selectNames, child );
+        if ( selected.contains( item->name() ) && ( item->isHidden() || !previous.contains( item->name() ) ) )
+        {
+            item->setSelected( Qt::Checked );
+        }
+        else if ( previous.contains( item->name() ) && !selected.contains( item->name() ) )
+        {
+            item->setSelected( Qt::Unchecked );
+        }
     }
-    if ( item->isGroup() && selectNames.contains( item->name() ) )
+    for ( int i = 0; i < item->childCount(); ++i )
     {
-        item->setSelected( Qt::CheckState::Checked );
+        setSelections( selected, previous, item->child( i ) );
     }
 }
 
@@ -59,6 +65,7 @@ PackageModel::PackageModel( QObject* parent )
 
 PackageModel::~PackageModel()
 {
+    qDeleteAll( m_hiddenItems );
     delete m_rootItem;
 }
 
@@ -213,7 +220,26 @@ PackageModel::setSelections( const QStringList& selectNames )
 {
     if ( m_rootItem )
     {
-        ::setSelections( selectNames, m_rootItem );
+        ::setSelections( selectNames, m_linkedSelections, m_rootItem );
+        for ( auto* item : std::as_const( m_hiddenItems ) )
+        {
+            ::setSelections( selectNames, m_linkedSelections, item );
+        }
+        m_linkedSelections = selectNames;
+        QModelIndexList parents { QModelIndex() };
+        while ( !parents.isEmpty() )
+        {
+            const auto parent = parents.takeLast();
+            const int count = rowCount( parent );
+            if ( count > 0 )
+            {
+                emit dataChanged( index( 0, 0, parent ), index( count - 1, 0, parent ), { Qt::CheckStateRole } );
+                for ( int row = 0; row < count; ++row )
+                {
+                    parents.append( index( row, 0, parent ) );
+                }
+            }
+        }
     }
 }
 
@@ -228,7 +254,18 @@ PackageModel::getPackages() const
     auto items = getItemPackages( m_rootItem );
     for ( auto package : m_hiddenItems )
     {
-        if ( package->hiddenSelected() )
+        bool linked = false;
+        const PackageTreeItem* ancestor = package;
+        while ( ancestor && ancestor->isSelected() != Qt::Unchecked )
+        {
+            if ( m_linkedSelections.contains( ancestor->name() ) )
+            {
+                linked = true;
+                break;
+            }
+            ancestor = ancestor->parentItem();
+        }
+        if ( linked || package->hiddenSelected() )
         {
             items.append( getItemPackages( package ) );
         }
@@ -333,11 +370,6 @@ PackageModel::setupModelData( const QVariantList& groupList, PackageTreeItem* pa
         if ( item->isHidden() )
         {
             m_hiddenItems.append( item );
-            if ( !item->isSelected() )
-            {
-                cWarning() << "Item" << ( item->parentItem() ? item->parentItem()->name() : QString() ) << '.'
-                           << item->name() << "is hidden, but not selected.";
-            }
         }
         else
         {
@@ -351,6 +383,9 @@ void
 PackageModel::setupModelData( const QVariantList& l )
 {
     beginResetModel();
+    qDeleteAll( m_hiddenItems );
+    m_hiddenItems.clear();
+    m_linkedSelections.clear();
     delete m_rootItem;
     m_rootItem = new PackageTreeItem();
     setupModelData( l, m_rootItem );

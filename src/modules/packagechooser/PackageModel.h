@@ -28,6 +28,7 @@ struct PackageItem
     QStringList packageNames;
     QVariantMap netinstallData;
     QStringList visibleWhen;
+    QVariant hook;
 
     /// @brief Create blank PackageItem
     PackageItem();
@@ -59,6 +60,7 @@ struct PackageItem
      *  - *description* (and *description[lang]*)
      *  - *screenshot*: a path to a screenshot for this package
      *  - *packages*: a list of package names
+     *  - *hook*: optional command(s), using the shellprocess script format
      *  - *visibleWhen*: a list of GlobalStorage comparison expressions; all
      *    expressions must evaluate true for this item to be visible
      */

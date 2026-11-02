@@ -23,6 +23,7 @@ calamares_add_plugin(packagechooser
     EXPORT_MACRO PLUGINDLLEXPORT_PRO
     SOURCES
         Config.cpp
+        PackageChooserHookJob.cpp
         PackageChooserPage.cpp
         PackageChooserViewStep.cpp
         PackageModel.cpp

@@ -22,6 +22,7 @@ public:
 private Q_SLOTS:
     void initTestCase();
     void testBogus();
+    void testFinalSelectionHooks();
     void testAppData();
     void testNetinstallSelectionIsAvailableToContextualProcess();
     void testNetinstallSelectionReplacesOwnPreviousSelection();

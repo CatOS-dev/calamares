@@ -205,3 +205,44 @@ PackageChooserTests::testNetinstallSelectionReplacesOwnPreviousSelection()
     QCOMPARE( gs->value( QStringLiteral( "packagechooser_desktop" ) ).toString(),
               QStringLiteral( "Niri-noctalia" ) );
 }
+
+void
+PackageChooserTests::testFinalSelectionHooks()
+{
+    QTemporaryDir directory;
+    QVERIFY( directory.isValid() );
+    const QString output = directory.filePath( "result" );
+    const QString script = directory.filePath( "action.sh" );
+    QFile file( script );
+    QVERIFY( file.open( QIODevice::WriteOnly ) );
+    file.write( "printf '%s' executed > \"$1\"\n" );
+    file.close();
+
+    Config config;
+    config.setDefaultId( Calamares::ModuleSystem::InstanceKey( "packagechooser", "hook-test" ) );
+    config.setConfigurationMap( QVariantMap {
+        { "method", "netinstall-select" },
+        { "dontChroot", true },
+        { "items", QVariantList {
+            QVariantMap { { "id", "old" }, { "name", "Old option" }, { "hook", "false" } },
+            QVariantMap { { "id", "final" }, { "name", "Final option" },
+                          { "hook", QString( "bash '%1' '%2'" ).arg( script, output ) } },
+            QVariantMap { { "id", "plain" }, { "name", "Plain option" } }
+        } }
+    } );
+    config.updateGlobalStorage( { "old" } );
+    config.updateGlobalStorage( { "final" } );
+    QVERIFY( !QFile::exists( output ) );
+    const auto jobs = config.hookJobs();
+    QCOMPARE( jobs.count(), 1 );
+    QVERIFY( jobs.first()->exec().succeeded() );
+    QFile result( output );
+    QVERIFY( result.open( QIODevice::ReadOnly ) );
+    QCOMPARE( result.readAll(), QByteArray( "executed" ) );
+    config.updateGlobalStorage( { "plain" } );
+    QVERIFY( config.hookJobs().isEmpty() );
+    config.updateGlobalStorage( { "old" } );
+    const auto failingJobs = config.hookJobs();
+    QCOMPARE( failingJobs.count(), 1 );
+    QVERIFY( !failingJobs.first()->exec().succeeded() );
+}

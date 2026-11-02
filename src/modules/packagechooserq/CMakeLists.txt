@@ -33,6 +33,7 @@ calamares_add_plugin(packagechooserq
     SOURCES
         PackageChooserQmlViewStep.cpp
         ${_packagechooser}/Config.cpp
+        ${_packagechooser}/PackageChooserHookJob.cpp
         ${_packagechooser}/PackageModel.cpp
         ${_extra_src}
     RESOURCES

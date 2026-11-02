@@ -53,14 +53,10 @@ public:
     int rowCount( const QModelIndex& parent = QModelIndex() ) const override;
     int columnCount( const QModelIndex& parent = QModelIndex() ) const override;
 
-    /** @brief Sets the checked flag on matching groups in the tree
+    /** @brief Synchronizes PackageChooser selections, including hidden groups
      *
-     * Recursively traverses the tree pointed to by m_rootItem and
-     * checks if a group name matches any of the items in @p selectNames.
-     * If a match is found, set check the box for that group and it's children.
-     *
-     * Individual packages will not be matched.
-     *
+     * Replaces the previous linked selection while preserving unrelated choices.
+     * Individual packages are not matched.
      */
     void setSelections( const QStringList& selectNames );
 
@@ -87,6 +83,7 @@ private:
 
     PackageTreeItem* m_rootItem = nullptr;
     PackageTreeItem::List m_hiddenItems;
+    QStringList m_linkedSelections;
 };
 
 #endif  // PACKAGEMODEL_H
