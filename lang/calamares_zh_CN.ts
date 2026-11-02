@@ -5409,4 +5409,22 @@ ls -l /home
       <translation>捐赠</translation>
     </message>
   </context>
+<context>
+    <name>SummaryPage</name>
+    <message>
+        <source>Package check</source>
+        <translation>软件包检查</translation>
+    </message>
+    <message>
+        <source>No package conflicts found.</source>
+        <translation>软件包检查完成，没有发现冲突。</translation>
+    </message>
+</context>
+<context>
+    <name>PackageCheck</name>
+    <message>
+        <source>Package checks could not be completed. Please contact the distribution maintainer.</source>
+        <translation>无法完成软件包检查，请联系发行版维护者。</translation>
+    </message>
+</context>
 </TS>

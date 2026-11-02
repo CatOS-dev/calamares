@@ -11,6 +11,7 @@
 #define SUMMARYPAGEPLUGIN_H
 
 #include "Config.h"
+#include "PackageCheck.h"
 
 #include "DllMacro.h"
 #include "utils/PluginFactory.h"
@@ -40,8 +41,16 @@ public:
 
     void onActivate() override;
     void onLeave() override;
+    void setConfigurationMap( const QVariantMap& configurationMap ) override;
+
+    bool packageCheckEnabled() const { return m_packageCheckEnabled; }
+    const QList< PackageCheckNotice >& packageNotices() const { return m_packageNotices; }
 
 private:
+    bool m_packageCheckEnabled = false;
+    bool m_packageErrors = false;
+    QVariantList m_packageRules;
+    QList< PackageCheckNotice > m_packageNotices;
     Config* m_config = nullptr;
     SummaryPage* m_widget = nullptr;
 };

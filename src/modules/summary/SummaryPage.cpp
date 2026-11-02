@@ -139,6 +139,27 @@ SummaryPage::buildWidgets( Config* config, SummaryViewStep* viewstep )
     QPalette bodyPalette( palette() );
     bodyPalette.setColor( WindowBackground, palette().window().color().lighter( 108 ) );
 
+    if ( viewstep->packageCheckEnabled() )
+    {
+        m_layout->addWidget( createTitleLabel( tr( "Package check" ), titleFont ) );
+        auto notices = viewstep->packageNotices();
+        if ( notices.isEmpty() )
+        {
+            notices.append( { false, tr( "No package conflicts found." ) } );
+        }
+        for ( const auto& notice : notices )
+        {
+            const QString symbol = viewstep->packageNotices().isEmpty()
+                ? QStringLiteral( "✓" ) : ( notice.error ? QStringLiteral( "✕" ) : QStringLiteral( "⚠" ) );
+            auto* label = new QLabel( symbol + QStringLiteral( "  " ) + notice.message );
+            label->setObjectName( "packageCheckRow" );
+            label->setTextFormat( Qt::PlainText );
+            label->setWordWrap( true );
+            m_layout->addWidget( label );
+        }
+        m_layout->addSpacing( SECTION_SPACING );
+    }
+
     const auto* model = config->summaryModel();
     const auto rowCount = model->rowCount();
 

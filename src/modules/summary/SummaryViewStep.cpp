@@ -10,6 +10,10 @@
 #include "SummaryViewStep.h"
 
 #include "SummaryPage.h"
+#include "GlobalStorage.h"
+#include "JobQueue.h"
+
+#include <algorithm>
 
 CALAMARES_PLUGIN_FACTORY_DEFINITION( SummaryViewStepFactory, registerPlugin< SummaryViewStep >(); )
 
@@ -49,7 +53,7 @@ SummaryViewStep::widget()
 bool
 SummaryViewStep::isNextEnabled() const
 {
-    return true;
+    return !m_packageErrors;
 }
 
 
@@ -84,6 +88,15 @@ SummaryViewStep::jobs() const
 void
 SummaryViewStep::onActivate()
 {
+    m_packageNotices.clear();
+    if ( m_packageCheckEnabled )
+    {
+        auto* gs = Calamares::JobQueue::instance()->globalStorage();
+        m_packageNotices = checkPackages( gs->value( "packageOperations" ).toList(), m_packageRules );
+    }
+    m_packageErrors = std::any_of( m_packageNotices.cbegin(), m_packageNotices.cend(),
+                                  []( const auto& notice ) { return notice.error; } );
+    emit nextStatusChanged( isNextEnabled() );
     m_config->collectSummaries( this, Config::Widgets::Enabled );
     m_widget->buildWidgets( m_config, this );
 }
@@ -94,4 +107,11 @@ SummaryViewStep::onLeave()
 {
     m_config->clearSummaries();
     m_widget->cleanup();
+}
+
+void
+SummaryViewStep::setConfigurationMap( const QVariantMap& configurationMap )
+{
+    m_packageCheckEnabled = configurationMap.contains( "packageCheck" );
+    m_packageRules = configurationMap.value( "packageCheck" ).toMap().value( "rules" ).toList();
 }
